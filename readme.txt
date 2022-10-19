@@ -7,4 +7,5 @@ which will select 1000 samples at a time from the SVHN dataset using the BAIT al
 
 
 
+Check combining.ipynb inside query_strategies
  
