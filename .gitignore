@@ -1,1 +1,4 @@
+FISH/
 data*
+*.pyt
+*.pth
