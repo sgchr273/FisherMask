@@ -147,9 +147,25 @@ class BaitSampling(Strategy):
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
+        '''
+        idxs_lb stands for indexes_labeled, i.e. image idxs that have been labeled.
+        idxs_lb is a 0-1 vector having length as n_pool, a particular component is 
+        0 if the corresponding image has not been labeled previously, otherwise it is 1.
+        ~idxs_lb is the componentwise NOT operation on idxs_lb, i.e., components with 1
+        are images that have not been labeled previously.
+        n_pool is size of entire training dataet, i.e. in CIFAR10, it is 60,000.
+        idxs_unlabeled is a np array of integer indices for images that have not been 
+        labeled previously.
+        '''
 
         # get low rank fishers
         xt = self.get_exp_grad_embedding(self.X, self.Y)
+        '''
+        X has all the training images and Y has all the corresponding labels.
+        get_exp_grad_embedding corresponds to Appendix A.2, 
+        and is calculating the Vx matrix.
+        For us, xt should contain the gradients wrt all the important weights.
+        '''
 
         # get fisher
         if self.fishIdentity == 0:
@@ -159,6 +175,9 @@ class BaitSampling(Strategy):
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
             rounds = int(np.ceil(len(self.X) / batchSize))
             for i in range(int(np.ceil(len(self.X) / batchSize))):
+                '''
+                adding individual fisher matrices to compute overall fisher matrix
+                '''
                 xt_ = xt[i * batchSize : (i + 1) * batchSize].cuda()
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0).detach().cpu()
                 fisher = fisher + op
