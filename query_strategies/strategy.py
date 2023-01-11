@@ -65,7 +65,7 @@ class Strategy:
         accCurrent = 0.
         bestAcc = 0.
         attempts = 0
-        while accCurrent < 0.99: 
+        while accCurrent < 0.99:
             accCurrent, lossCurrent = self._train(epoch, loader_tr, optimizer)
             if bestAcc < accCurrent:
                 bestAcc = accCurrent
@@ -77,7 +77,7 @@ class Strategy:
             if (epoch % 1000 == 0) and (accCurrent < 0.2) and (self.args['modelType'] != 'linear'):
                 self.clf = self.net.apply(weight_reset)
                 optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
-            if attempts >= 50 and self.args['modelType'] == 'linear': break 
+            if attempts >= 50 and self.args['modelType'] == 'linear': break
             #if attempts >= 50 and self.args['modelType'] != 'linear' and len(idxs_train) > 1000:
             #    self.clf = self.net.apply(weight_reset)
             #    optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
