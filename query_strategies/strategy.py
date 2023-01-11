@@ -376,6 +376,11 @@ class Strategy:
 
     # gradient embedding (assumes cross-entropy loss)
     def get_exp_grad_embedding(self, X, Y, probs=[], model=[]):
+        '''
+        even though all the labels are provided as input through Y,
+        the function does not use any of the labels in its computation.
+        Corresponds to Appendix A.2 of the paper.
+        '''
         if type(model) == list:
             model = self.clf
 
