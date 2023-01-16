@@ -15,4 +15,3 @@ from .active_learning_by_learning import ActiveLearningByLearning
 from .badge_sampling  import BadgeSampling
 from .baseline_sampling  import BaselineSampling
 from .bait_sampling  import BaitSampling
-from .fisher_mask_sampling import fisher_mask_sampling
