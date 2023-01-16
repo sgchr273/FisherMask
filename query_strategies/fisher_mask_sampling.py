@@ -18,7 +18,7 @@ def calculate_mask(sq_grads_expect):
         num_top = int(0.02 * len(combined_arrays))
         top_idxs = sorted_idxs[-num_top:]
 
-        t_num = [[] for i in range(len(list_t))]
+        imp_wt_idxs = [[] for i in range(len(list_t))]
         for idx in top_idxs:
             prev_length = 0
             for idx_layer_num, length in enumerate(cum_lengths):
@@ -29,16 +29,28 @@ def calculate_mask(sq_grads_expect):
                         idx_tuple = np.nonzero(combined_arrays[idx] == list_t[idx_layer_num])
                         '''pass only numpy or python objects to numpy functions'''
                         # s_num[len_idx].append([idx[0] for idx in idx_tuple])
-                        t_num[idx_layer_num].append(idx_tuple)
+                        imp_wt_idxs[idx_layer_num].append(idx_tuple)
                     except IndexError:
-                        print("caught error: ", idx, idx_layer_num, length, t_num)
+                        print("caught error: ", idx, idx_layer_num, length, imp_wt_idxs)
                     break
                 prev_length = length
-        return t_num
+        return imp_wt_idxs
 
 class fisher_mask_sampling(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args):
         super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
+
+    def log_prob_grads_wrt(self, imp_idxs):
+        '''
+        return a tensor of size 60,000 x 10 x num imp idxs
+        '''
+        self.net.to(device)
+        for param in self.net.parameters():
+            param.requires_grad = True
+        self.net.eval()
+
+
+        return 
 
     def query(self, n):
         sq_grads_expect = self.calculate_gradients()
