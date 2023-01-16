@@ -384,11 +384,11 @@ class Strategy:
         if type(model) == list:
             model = self.clf
 
-        embDim = model.get_embedding_dim()
+        embDim = model.get_embedding_dim() # = num of neurons in the penultimate layer = d in the paper
         model.eval()
-        nLab = len(np.unique(Y))
+        nLab = len(np.unique(Y)) # = num of classes = k in the paper
 
-        embedding = np.zeros([len(Y), nLab, embDim * nLab])
+        embedding = np.zeros([len(Y), nLab, embDim * nLab]) # of size num images in dataset x k x dk
         for ind in range(nLab):
             loader_te = DataLoader(self.handler(X, Y, transform=self.args['transformTest']),
                             shuffle=False, **self.args['loader_te_args'])

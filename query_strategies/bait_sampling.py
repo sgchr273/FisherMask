@@ -81,12 +81,27 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     fisher = fisher.cuda()
 
     # forward selection
-    for i in range(int((backwardSteps + 1) *  K)):
+    for i in range(int((backwardSteps + 1) *  K)): 
+        '''
+        K corresponds to minibatch size, which is called B in the paper.
+        currently we assume that backwardSteps = 0
+        '''
 
         xt_ = X.cuda() 
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
-        traceEst = torch.diagonal(xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, dim1=-2, dim2=-1).sum(-1)
+        traceEst = torch.diagonal(
+            xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, 
+            dim1=-2, 
+            dim2=-1
+        ).sum(-1)
+        '''
+        Vx^T M^-1 I(θ_L) M^-1 Vx A^-1 formula from page 5 of paper.
+        currentInv corresponds to M^-1
+        fisher corresponds to I(θ_L)
+        xt_ corresponds to Vx^T
+        innerInv corresponds to A^-1
+        '''
 
         xt = xt_.cpu()
         del xt, innerInv
@@ -95,7 +110,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         torch.cuda.empty_cache()
         gc.collect()
 
-        traceEst = traceEst.detach().cpu().numpy()
+        traceEst = traceEst.detach().cpu().numpy() # objective value in eq (5) from the paper
 
         dist = traceEst - np.min(traceEst) + 1e-10
         dist = dist / np.sum(dist)
@@ -106,7 +121,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
                 ind = j
                 break
 
-        indsAll.append(ind)
+        indsAll.append(ind)  # adding a new tilde_x to the minibatch being made
         print(i, ind, traceEst[ind], flush=True)
        
         xt_ = X[ind].unsqueeze(0).cuda()
@@ -176,7 +191,7 @@ class BaitSampling(Strategy):
             rounds = int(np.ceil(len(self.X) / batchSize))
             for i in range(int(np.ceil(len(self.X) / batchSize))):
                 '''
-                adding individual fisher matrices to compute overall fisher matrix
+                adding individual fisher matrices to compute overall fisher matrix I_U
                 '''
                 xt_ = xt[i * batchSize : (i + 1) * batchSize].cuda()
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0).detach().cpu()
