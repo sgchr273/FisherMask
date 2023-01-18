@@ -44,18 +44,53 @@ class fisher_mask_sampling(Strategy):
         '''
         return a tensor of size 60,000 x 10 x num imp idxs
         '''
+        num_imp_per_layer = [len(t) for t in imp_idxs]
+        #print("num_imp_per_layer: ", len(num_imp_per_layer), num_imp_per_layer, " sum: ", sum(num_imp_per_layer))
+        log_prob_grads = np.zeros([60000, 10, sum(num_imp_per_layer)]) # remove hardcoded values here
+        #print(len(log_prob_grads), log_prob_grads.shape, log_prob_grads)
+        
         self.net.to(device)
         for param in self.net.parameters():
             param.requires_grad = True
         self.net.eval()
+        parameters = tuple(self.net.parameters())
+        
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transformTest']), shuffle=False, **self.args['loader_te_args'])
+        
+        for test_batch, test_labels, idxs in test_loader:
+            test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
+            
+            outputs, e1 = self.net(test_batch)
+            _, preds = torch.max(outputs, 1)
+            print(torch.sum(preds == test_labels.data) / len(test_labels))
+            
+            probs = F.softmax(outputs, dim=1).to('cpu')
+            log_probs = F.log_softmax(outputs, dim=1)
+            N, C = log_probs.shape
 
 
-        return 
+            for n in range(N):
+                pos = 0
+                print('N: ', n)
+                for c in range(C):
+                    grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True)
+                    for i, grad in enumerate(grad_list):    # different layers
+                        print("i: ", i)
+                        selected_grads = np.array([grad[t].cpu() for t in imp_idxs[i]])
+                        log_prob_grads[n][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
+                        pos += len(selected_grads)
+                    self.net.zero_grad()
+        
+        return log_prob_grads 
 
     def query(self, n):
         sq_grads_expect = self.calculate_gradients()
-        t_num = calculate_mask(sq_grads_expect)
-        return t_num
+        imp_wt_idxs = calculate_mask(sq_grads_expect)
+        xt_ = self.log_prob_grads_wrt(imp_wt_idxs)
+        print(len(xt_), xt_.shape, xt_)
+        ##
+
+        return xt_
 
     def calculate_gradients(self):
         self.net.to(device)
