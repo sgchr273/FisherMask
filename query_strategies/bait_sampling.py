@@ -12,7 +12,7 @@ from copy import copy as copy
 from copy import deepcopy as deepcopy
 import torch
 from torch import nn
-import torchfile
+# import torchfile
 from torch.autograd import Variable
 import resnet
 import vgg
@@ -70,6 +70,10 @@ def getUse():
             pass
 
 def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
+    '''
+    K is the number of images to be selected for labelling, 
+    iterates is the fisher for images that are already labelled
+    '''
 
     numEmbs = len(X)
     indsAll = []
@@ -77,6 +81,8 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     rank = X.shape[-2]
 
     currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
+    # what is lamb used for here?
+    
     X = X * np.sqrt(K / (nLabeled + K))
     fisher = fisher.cuda()
 

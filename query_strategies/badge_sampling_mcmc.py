@@ -12,7 +12,7 @@ from copy import copy as copy
 from copy import deepcopy as deepcopy
 import torch
 from torch import nn
-import torchfile
+# import torchfile
 from torch.autograd import Variable
 import resnet
 import vgg

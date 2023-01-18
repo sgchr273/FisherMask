@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader
 from torchvision.models import ResNet18_Weights
 from .strategy import Strategy
 
+from bait_sampling import select
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def calculate_mask(sq_grads_expect):
@@ -46,7 +48,7 @@ class fisher_mask_sampling(Strategy):
         return a tensor of size 60,000 x 10 x num imp idxs
         '''
         num_imp_per_layer = [len(t) for t in imp_idxs]
-        log_prob_grads = np.zeros(60000, 10, sum(num_imp_per_layer)) # remove hardcoded values here
+        log_prob_grads = np.zeros((len(self.Y), len(np.unique(self.Y)), sum(num_imp_per_layer))) 
         
         self.net.to(device)
         for param in self.net.parameters():
@@ -62,7 +64,8 @@ class fisher_mask_sampling(Strategy):
             outputs, e1 = self.net(test_batch)
             _, preds = torch.max(outputs, 1)
             print(torch.sum(preds == test_labels.data) / len(test_labels))
-            
+            print(idxs)
+
             probs = F.softmax(outputs, dim=1).to('cpu')
             log_probs = F.log_softmax(outputs, dim=1)
             N, C = log_probs.shape
@@ -71,7 +74,11 @@ class fisher_mask_sampling(Strategy):
                 print('N: ', n)
                 for c in range(C):
                     grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True)
+                    pos = 0
                     for i, grad in enumerate(grad_list):    # different layers
+                        selected_grads = np.array([grad[t].item().cpu() for t in imp_idxs[i]])
+                        log_prob_grads[idxs[n]][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
+                        pos += len(selected_grads)
                         # selected_grads = np.array([grad[t] for t in imp_idxs[i]])
                         # log_prob_grads[image][class][slice corresp to ith layer] = selected_grads
                     self.net.zero_grad()
@@ -82,11 +89,60 @@ class fisher_mask_sampling(Strategy):
     def query(self, n):
         sq_grads_expect = self.calculate_gradients()
         imp_wt_idxs = calculate_mask(sq_grads_expect)
-        xt_ = self.log_prob_grads_wrt(imp_wt_idxs)
-        
-        ##
+        xt = self.log_prob_grads_wrt(imp_wt_idxs)
 
-        return 
+        # get fisher
+        if self.fishIdentity == 0:
+            print('getting fisher matrix ...', flush=True)
+            batchSize = 1000
+            nClass = torch.max(self.Y).item() + 1
+            fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
+            rounds = int(np.ceil(len(self.X) / batchSize))
+            for i in range(int(np.ceil(len(self.X) / batchSize))):
+                '''
+                adding individual fisher matrices to compute overall fisher matrix I_U
+                '''
+                xt_ = xt[i * batchSize : (i + 1) * batchSize].cuda()
+                op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0).detach().cpu()
+                fisher = fisher + op
+                xt_ = xt_.cpu()
+                del xt_, op
+                torch.cuda.empty_cache()
+                gc.collect()
+        else: fisher = torch.eye(xt.shape[-1])
+        
+        # get fisher only for samples that have been seen before
+        idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
+        
+        batchSize = 1000 
+        nClass = torch.max(self.Y).item() + 1
+        init = torch.zeros(xt.shape[-1], xt.shape[-1])
+        xt2 = xt[self.idxs_lb]
+        rounds = int(np.ceil(len(xt2) / batchSize))
+        if self.fishInit == 1:
+            for i in range(int(np.ceil(len(xt2) / batchSize))):
+                xt_ = xt2[i * batchSize : (i + 1) * batchSize].cuda()
+                op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt2)), 0).detach().cpu()
+                init = init + op
+                xt_ = xt_.cpu()
+                del xt_, op
+                torch.cuda.empty_cache()
+                gc.collect()
+
+
+        phat = self.predict_prob(self.X[idxs_unlabeled], self.Y[idxs_unlabeled])
+        print('all probs: ' + 
+                str(str(torch.mean(torch.max(phat, 1)[0]).item())) + ' ' + 
+                str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
+                str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
+        
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        print('selected probs: ' +
+                str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
+                str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
+                str(str(torch.mean(torch.std(phat[chosen,:], 1)).item())), flush=True)
+        return idxs_unlabeled[chosen]
+        
 
     def calculate_gradients(self):
         self.net.to(device)

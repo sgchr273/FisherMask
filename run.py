@@ -24,7 +24,7 @@ from query_strategies import RandomSampling, BadgeSampling, \
                                 EntropySampling, CoreSet, ActiveLearningByLearning, \
                                 LeastConfidenceDropout, MarginSamplingDropout, EntropySamplingDropout, \
                                 KMeansSampling, KCenterGreedy, BALDDropout, CoreSet, \
-                                AdversarialBIM, AdversarialDeepFool, ActiveLearningByLearning, BaitSampling
+                                AdversarialBIM, AdversarialDeepFool, ActiveLearningByLearning, BaitSampling, fisher_mask_sampling
 
 
 # code based on https://github.com/ej0cl6/deep-active-learning and https://github.com/JordanAsh/badge
@@ -85,7 +85,7 @@ args_pool = {'MNIST':
                      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
                  ]),
                  'loader_tr_args':{'batch_size': 128, 'num_workers': 1},
-                 'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
+                 'loader_te_args':{'batch_size': 10, 'num_workers': 1}, # change back to 1000
                  'optimizer_args':{'lr': 0.05, 'momentum': 0.3},
                  'transformTest': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])}
                 }
@@ -251,6 +251,8 @@ elif opts.alg == 'albl': # active learning by learning
     albl_list = [LeastConfidence(X_tr, Y_tr, idxs_lb, net, handler, args),
         CoreSet(X_tr, Y_tr, idxs_lb, net, handler, args)]
     strategy = ActiveLearningByLearning(X_tr, Y_tr, idxs_lb, net, handler, args, strategy_list=albl_list, delta=0.1)
+elif opts.alg == 'fish': # fisher mask based sampling
+    strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
 else: 
     print('choose a valid acquisition function', flush=True)
     raise ValueError
@@ -263,32 +265,32 @@ print(type(strategy).__name__, flush=True)
 if type(X_te) == torch.Tensor: X_te = X_te.numpy()
 
 # round 0 accuracy
-strategy.train()
-P = strategy.predict(X_te, Y_te)
-acc = np.zeros(NUM_ROUND+1)
-acc[0] = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-print(str(opts.nStart) + '\ttesting accuracy {}'.format(acc[0]), flush=True)
-
-for rd in range(1, NUM_ROUND+1):
-    print('Round {}'.format(rd), flush=True)
-    torch.cuda.empty_cache()
-    gc.collect()
-    torch.cuda.empty_cache()
-    gc.collect()
-
-    # query
-    output = strategy.query(NUM_QUERY)
-    q_idxs = output
-    idxs_lb[q_idxs] = True
-
-    # update
-    strategy.update(idxs_lb)
-    strategy.train(verbose=False)
-
-    # round accuracy
+if __name__ == '__main__': # < -- remove this if to go back to original
+    strategy.train()
     P = strategy.predict(X_te, Y_te)
-    acc[rd] = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-    print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(acc[rd]), flush=True)
-    if sum(~strategy.idxs_lb) < opts.nQuery: break
-    if opts.rounds > 0 and rd == (opts.rounds - 1): break
+    acc = np.zeros(NUM_ROUND+1)
+    acc[0] = 1.0 * (Y_te == P).sum().item() / len(Y_te)
+    print(str(opts.nStart) + '\ttesting accuracy {}'.format(acc[0]), flush=True)
 
+    for rd in range(1, NUM_ROUND+1):
+        print('Round {}'.format(rd), flush=True)
+        torch.cuda.empty_cache()
+        gc.collect()
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        # query
+        output = strategy.query(NUM_QUERY)
+        q_idxs = output
+        idxs_lb[q_idxs] = True
+
+        # update
+        strategy.update(idxs_lb)
+        strategy.train(verbose=True)
+
+        # round accuracy
+        P = strategy.predict(X_te, Y_te)
+        acc[rd] = 1.0 * (Y_te == P).sum().item() / len(Y_te)
+        print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(acc[rd]), flush=True)
+        if sum(~strategy.idxs_lb) < opts.nQuery: break
+        if opts.rounds > 0 and rd == (opts.rounds - 1): break

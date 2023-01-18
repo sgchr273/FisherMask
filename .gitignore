@@ -2,3 +2,5 @@ FISH/
 data*
 *.pyt
 *.pth
+*.pickle
+*.png
