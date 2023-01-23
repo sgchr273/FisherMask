@@ -5,9 +5,10 @@ import torch.nn.functional as F
 from torchvision import datasets
 from torch.utils.data import DataLoader
 from torchvision.models import ResNet18_Weights
+import time
 from .strategy import Strategy
 
-from bait_sampling import select
+from .bait_sampling import select
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -56,7 +57,7 @@ class fisher_mask_sampling(Strategy):
         self.net.eval()
         parameters = tuple(self.net.parameters())
         
-        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transformTest']), shuffle=False, **self.args['loader_te_args'])
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         
         for test_batch, test_labels, idxs in test_loader:
             test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
@@ -73,17 +74,24 @@ class fisher_mask_sampling(Strategy):
             for n in range(N):
                 print('N: ', n)
                 for c in range(C):
+                    start = time.time()
                     grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True)
+                    first = time.time()
                     pos = 0
                     for i, grad in enumerate(grad_list):    # different layers
-                        selected_grads = np.array([grad[t].item().cpu() for t in imp_idxs[i]])
+                        grad = grad.cpu()
+                        selected_grads = np.array([grad[t].item() for t in imp_idxs[i]])
                         log_prob_grads[idxs[n]][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
                         pos += len(selected_grads)
                         # selected_grads = np.array([grad[t] for t in imp_idxs[i]])
                         # log_prob_grads[image][class][slice corresp to ith layer] = selected_grads
+                    second = time.time()
+                    print('grads', first - start, 'loop:', second - first)
                     self.net.zero_grad()
+                    
+                    
         
-        return log_prob_grads
+        return torch.Tensor(log_prob_grads)
 
 
     def query(self, n):
@@ -100,7 +108,7 @@ class fisher_mask_sampling(Strategy):
             rounds = int(np.ceil(len(self.X) / batchSize))
             for i in range(int(np.ceil(len(self.X) / batchSize))):
                 '''
-                adding individual fisher matrices to compute overall fisher matrix I_U
+                adding individual fisher matrices to compute overall fisher matrix I(theta_^L_t)
                 '''
                 xt_ = xt[i * batchSize : (i + 1) * batchSize].cuda()
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0).detach().cpu()
@@ -155,15 +163,15 @@ class fisher_mask_sampling(Strategy):
         """ preprocess = ResNet18_Weights.DEFAULT.transforms()
         processed_testset = datasets.CIFAR10(root='./data/CIFAR10', train=False, download=True, transform=preprocess)
         test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) """
-        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transformTest']), shuffle=False, **self.args['loader_te_args'])
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         idx = 0
-        num_samples = 1
+        num_samples = 1 #1024 # used by FISH mask paper
 
         for test_batch, test_labels, idxs in test_loader:
             if idx >= num_samples:
                 break
             test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
-            print('idx: ', idx)
+            # print('idx: ', idx)
             #model.zero_grad() moved this line
             outputs, e1 = self.net(test_batch)
             _, preds = torch.max(outputs, 1)
@@ -174,7 +182,7 @@ class fisher_mask_sampling(Strategy):
             N, C = log_probs.shape
 
             for n in range(N):
-                print('N: ', n)
+                print('calc grads N: ', n)
                 for c in range(C):
                     grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True)
                     for i, grad in enumerate(grad_list):    # different layers
