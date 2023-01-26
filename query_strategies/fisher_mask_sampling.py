@@ -46,10 +46,19 @@ class fisher_mask_sampling(Strategy):
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
-        return a tensor of size 60,000 x 10 x num imp idxs
+        return a tensor of size 50,000 x 10 x num imp idxs
         '''
         num_imp_per_layer = [len(t) for t in imp_idxs]
         log_prob_grads = np.zeros((len(self.Y), len(np.unique(self.Y)), sum(num_imp_per_layer))) 
+        '''
+        make a mask based on imp_idxs
+        I have 62 layers of weights, and I can find their shapes
+        initialize 62 different arrays using np.zeros(weight.shape), these are the 62 masks
+        for i in range(len(imp_idxs)):
+            for tup in imp_idxs[i]:
+                mask_i[tup] = 1
+        '''
+        
         
         self.net.to(device)
         for param in self.net.parameters():
@@ -75,19 +84,27 @@ class fisher_mask_sampling(Strategy):
                 print('N: ', n)
                 for c in range(C):
                     start = time.time()
-                    grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True)
+                    grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True) # ~0.007 secs
                     first = time.time()
                     pos = 0
-                    for i, grad in enumerate(grad_list):    # different layers
-                        grad = grad.cpu()
-                        selected_grads = np.array([grad[t].item() for t in imp_idxs[i]])
+                    for i, grad in enumerate(grad_list):    # different layers # ~0.2 secs ~ 0.003 secs per iteration
+                        grad = grad.detach().cpu().numpy()  # https://discuss.pytorch.org/t/should-it-really-be-necessary-to-do-var-detach-cpu-numpy/35489
+                        # start = time.time()
+                        
+                        selected_grads = np.array([grad[t] for t in imp_idxs[i]]).reshape(-1) 
+                        # selected_grads = grad[mask_i].reshape(-1)
+                        # first = time.time()
+                        
                         log_prob_grads[idxs[n]][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
+                        # second = time.time()
                         pos += len(selected_grads)
+                        # print('selection', first - start, 'assignment', second - first)
                         # selected_grads = np.array([grad[t] for t in imp_idxs[i]])
                         # log_prob_grads[image][class][slice corresp to ith layer] = selected_grads
                     second = time.time()
                     print('grads', first - start, 'loop:', second - first)
                     self.net.zero_grad()
+                    
                     
                     
         
