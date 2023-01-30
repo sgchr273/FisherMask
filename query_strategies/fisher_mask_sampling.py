@@ -58,6 +58,12 @@ class fisher_mask_sampling(Strategy):
             for tup in imp_idxs[i]:
                 mask_i[tup] = 1
         '''
+        # masks_list = []
+        # for layer_num, layer_wt in enumerate(list(self.net.parameters())):
+        #     mask = np.zeros_like(layer_wt, dtype=bool)
+        #     for tup in imp_idxs[layer_num]:
+        #         mask[tup] = True
+        #     masks_list.append(mask)
         
         
         self.net.to(device)
@@ -92,6 +98,12 @@ class fisher_mask_sampling(Strategy):
                         # start = time.time()
                         
                         selected_grads = np.array([grad[t] for t in imp_idxs[i]]).reshape(-1) 
+                        # selected_grads = grad[masks_list[i]]
+                        '''
+                        trying to remove above for loop
+                        use the 62 calculated masks as 
+                        selected_grads = grads[mask_i]
+                        '''
                         # selected_grads = grad[mask_i].reshape(-1)
                         # first = time.time()
                         
