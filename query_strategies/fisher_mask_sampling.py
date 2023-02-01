@@ -117,10 +117,7 @@ class fisher_mask_sampling(Strategy):
                     print('grads', first - start, 'loop:', second - first)
                     self.net.zero_grad()
                     
-                    
-                    
-        
-        return torch.Tensor(log_prob_grads)
+        return log_prob_grads
 
 
     def query(self, n):
