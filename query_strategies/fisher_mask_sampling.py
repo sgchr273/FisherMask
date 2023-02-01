@@ -92,7 +92,9 @@ class fisher_mask_sampling(Strategy):
                         # start = time.time()
                         
                         selected_grads = np.array([grad[t] for t in imp_idxs[i]]).reshape(-1) 
-                        # selected_grads = grad[mask_i].reshape(-1)
+                        '''
+                        selected_grads = grad[mask_i].reshape(-1) <--- something like this
+                        '''
                         # first = time.time()
                         
                         log_prob_grads[idxs[n]][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
