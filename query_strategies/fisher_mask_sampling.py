@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision.models import ResNet18_Weights
 import time
 from .strategy import Strategy
+import gc
 
 from .bait_sampling import select
 
@@ -43,6 +44,10 @@ def calculate_mask(sq_grads_expect):
 class fisher_mask_sampling(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args):
         super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
+        self.fishIdentity = args['fishIdentity']
+        self.fishInit = args['fishInit']
+        self.lamb = args['lamb']
+        self.backwardSteps = args['backwardSteps']
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -58,12 +63,12 @@ class fisher_mask_sampling(Strategy):
             for tup in imp_idxs[i]:
                 mask_i[tup] = 1
         '''
-        # masks_list = []
-        # for layer_num, layer_wt in enumerate(list(self.net.parameters())):
-        #     mask = np.zeros_like(layer_wt, dtype=bool)
-        #     for tup in imp_idxs[layer_num]:
-        #         mask[tup] = True
-        #     masks_list.append(mask)
+        masks_list = []
+        for layer_num, layer_wt in enumerate(list(self.net.parameters())):
+            mask = np.zeros_like(layer_wt, dtype=bool)
+            for tup in imp_idxs[layer_num]:
+                mask[tup] = True
+            masks_list.append(mask)
         
         
         self.net.to(device)
@@ -80,14 +85,14 @@ class fisher_mask_sampling(Strategy):
             outputs, e1 = self.net(test_batch)
             _, preds = torch.max(outputs, 1)
             print(torch.sum(preds == test_labels.data) / len(test_labels))
-            print(idxs)
+            print('Batch: ', (idxs.numpy()[-1]+ 1)/len(test_batch) )
 
             probs = F.softmax(outputs, dim=1).to('cpu')
             log_probs = F.log_softmax(outputs, dim=1)
             N, C = log_probs.shape
 
             for n in range(N):
-                print('N: ', n)
+                # print('N: ', n)
                 for c in range(C):
                     start = time.time()
                     grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True) # ~0.007 secs
@@ -97,8 +102,8 @@ class fisher_mask_sampling(Strategy):
                         grad = grad.detach().cpu().numpy()  # https://discuss.pytorch.org/t/should-it-really-be-necessary-to-do-var-detach-cpu-numpy/35489
                         # start = time.time()
                         
-                        selected_grads = np.array([grad[t] for t in imp_idxs[i]]).reshape(-1) 
-                        # selected_grads = grad[masks_list[i]]
+                        # selected_grads = np.array([grad[t] for t in imp_idxs[i]]).reshape(-1) 
+                        selected_grads = grad[masks_list[i]]
                         '''
                         trying to remove above for loop
                         use the 62 calculated masks as 
@@ -121,14 +126,25 @@ class fisher_mask_sampling(Strategy):
 
 
     def query(self, n):
+        self.fishIdentity == 0
+        sq_grads_start = time.time()
         sq_grads_expect = self.calculate_gradients()
+        imp_wt_start = time.time()
+        #logging.info('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
+        print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
         imp_wt_idxs = calculate_mask(sq_grads_expect)
+        xt_start = time.time()
+        #logging.info('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
+        print('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
         xt = self.log_prob_grads_wrt(imp_wt_idxs)
+        xt_end = time.time()
+        #logging.info('log_prob_grads_wrt took ', xt_end-xt_start, ' seconds.')
+        print('log_prob_grads_wrt took ', xt_end-xt_start, ' seconds.')
 
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
-            batchSize = 1000
+            batchSize = 10
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -148,7 +164,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 1000 
+        batchSize = 10 
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
@@ -165,16 +181,22 @@ class fisher_mask_sampling(Strategy):
 
 
         phat = self.predict_prob(self.X[idxs_unlabeled], self.Y[idxs_unlabeled])
+        
         print('all probs: ' + 
                 str(str(torch.mean(torch.max(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
-        
+        start_for_select = time.time()
         chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        end_for_select = time.time()
+        print ('Select took', end_for_select - start_for_select, 'seconds')
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.std(phat[chosen,:], 1)).item())), flush=True)
+        end = time.time()
+        print('The rest of the query function took ', end-xt_end, ' seconds.')
+        print('Query took ', (imp_wt_start-sq_grads_start) + (xt_start-imp_wt_start) + (xt_end-xt_start) + (end-xt_end))
         return idxs_unlabeled[chosen]
         
 
@@ -191,7 +213,7 @@ class fisher_mask_sampling(Strategy):
         test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) """
         test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         idx = 0
-        num_samples = 1 #1024 # used by FISH mask paper
+        num_samples = 1024 #1024 # used by FISH mask paper
 
         for test_batch, test_labels, idxs in test_loader:
             if idx >= num_samples:
@@ -202,13 +224,14 @@ class fisher_mask_sampling(Strategy):
             outputs, e1 = self.net(test_batch)
             _, preds = torch.max(outputs, 1)
             print(torch.sum(preds == test_labels.data) / len(test_labels))
+            print('Batch: ', (idxs.numpy()[-1]+ 1)/len(test_batch) )
             
             probs = F.softmax(outputs, dim=1).to('cpu')
             log_probs = F.log_softmax(outputs, dim=1)
             N, C = log_probs.shape
 
             for n in range(N):
-                print('calc grads N: ', n)
+                # print('calc grads N: ', n)
                 for c in range(C):
                     grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True)
                     for i, grad in enumerate(grad_list):    # different layers

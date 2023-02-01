@@ -1,6 +1,6 @@
 import numpy as np
 from .strategy import Strategy
-from sklearn.neighbors import NearestNeighbors
+# from sklearn.neighbors import NearestNeighbors
 
 class KCenterGreedy(Strategy):
 	def __init__(self, X, Y, idxs_lb, net, handler, args):

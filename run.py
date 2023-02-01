@@ -85,7 +85,7 @@ args_pool = {'MNIST':
                      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
                  ]),
                  'loader_tr_args':{'batch_size': 128, 'num_workers': 1},
-                 'loader_te_args':{'batch_size': 10, 'num_workers': 1}, # change back to 1000
+                 'loader_te_args':{'batch_size': 1000, 'num_workers': 1}, # change back to 1000
                  'optimizer_args':{'lr': 0.05, 'momentum': 0.3},
                  'transformTest': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])}
                 }
@@ -285,11 +285,18 @@ if __name__ == '__main__': # < -- remove this if to go back to original
         idxs_lb[q_idxs] = True
 
         # update
+        update_time = time.time()
         strategy.update(idxs_lb)
+        train_time = time.time()
+        print('Update took:', train_time - update_time)
         strategy.train(verbose=True)
 
         # round accuracy
+        predict_time = time.time()
+        print('Train took:', predict_time - train_time)
         P = strategy.predict(X_te, Y_te)
+        end_time = time.time()
+        print('Predict took:', end_time - predict_time)
         acc[rd] = 1.0 * (Y_te == P).sum().item() / len(Y_te)
         print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(acc[rd]), flush=True)
         if sum(~strategy.idxs_lb) < opts.nQuery: break

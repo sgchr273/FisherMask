@@ -1,10 +1,10 @@
 import numpy as np
 import pdb
 from .strategy import Strategy
-from sklearn.neighbors import NearestNeighbors
+# from sklearn.neighbors import NearestNeighbors
 import pickle
 from datetime import datetime
-from sklearn.metrics import pairwise_distances
+# from sklearn.metrics import pairwise_distances
 
 class CoreSet(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args, tor=1e-4):

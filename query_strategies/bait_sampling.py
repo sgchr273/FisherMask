@@ -27,8 +27,8 @@ import numpy as np
 import scipy.sparse as sp
 from itertools import product
 from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
-from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.metrics.pairwise import pairwise_distances_argmin_min
+# from sklearn.metrics.pairwise import euclidean_distances
+# from sklearn.metrics.pairwise import pairwise_distances_argmin_min
 from sklearn.utils.extmath import row_norms, squared_norm, stable_cumsum
 from sklearn.utils.sparsefuncs_fast import assign_rows_csr
 from sklearn.utils.sparsefuncs import mean_variance_axis
@@ -38,9 +38,9 @@ from sklearn.utils import gen_batches
 from sklearn.utils import check_random_state
 from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.validation import FLOAT_DTYPES
-from sklearn.metrics.pairwise import rbf_kernel as rbf
+# from sklearn.metrics.pairwise import rbf_kernel as rbf
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.metrics import pairwise_distances
+# from sklearn.metrics import pairwise_distances
 
 # kmeans ++ initialization
 def batchOuterProdDet(X, A, batchSize):
