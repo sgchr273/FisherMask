@@ -8,6 +8,7 @@ from torchvision.models import ResNet18_Weights
 import time
 from .strategy import Strategy
 import gc
+import sys
 
 from .bait_sampling import select
 
@@ -65,7 +66,7 @@ class fisher_mask_sampling(Strategy):
         '''
         masks_list = []
         for layer_num, layer_wt in enumerate(list(self.net.parameters())):
-            mask = np.zeros_like(layer_wt, dtype=bool)
+            mask = np.zeros_like(layer_wt.detach().cpu().numpy(), dtype=bool)
             for tup in imp_idxs[layer_num]:
                 mask[tup] = True
             masks_list.append(mask)
@@ -79,7 +80,11 @@ class fisher_mask_sampling(Strategy):
         
         test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         
+        idx = 0
+        num_samples = 1
         for test_batch, test_labels, idxs in test_loader:
+            if idx >= num_samples:
+                break
             test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
             
             outputs, e1 = self.net(test_batch)
@@ -115,14 +120,20 @@ class fisher_mask_sampling(Strategy):
                         log_prob_grads[idxs[n]][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
                         # second = time.time()
                         pos += len(selected_grads)
+                        
                         # print('selection', first - start, 'assignment', second - first)
                         # selected_grads = np.array([grad[t] for t in imp_idxs[i]])
                         # log_prob_grads[image][class][slice corresp to ith layer] = selected_grads
                     second = time.time()
-                    print('grads', first - start, 'loop:', second - first)
-                    self.net.zero_grad()
-                    
-        return log_prob_grads
+                    # print('grads', first - start, 'loop:', second - first)
+                idx += 1
+                self.net.zero_grad()
+                if idx >= num_samples:
+                    break
+
+          
+        return torch.tensor(log_prob_grads)          
+        # return log_prob_grads
 
 
     def query(self, n):
@@ -144,7 +155,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
-            batchSize = 10
+            batchSize = 100
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -152,7 +163,9 @@ class fisher_mask_sampling(Strategy):
                 '''
                 adding individual fisher matrices to compute overall fisher matrix I(theta_^L_t)
                 '''
+              
                 xt_ = xt[i * batchSize : (i + 1) * batchSize].cuda()
+                # print(sys.getsizeof(xt_.flatten()))
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0).detach().cpu()
                 fisher = fisher + op
                 xt_ = xt_.cpu()
@@ -164,7 +177,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 10 
+        batchSize = 100
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
@@ -213,11 +226,12 @@ class fisher_mask_sampling(Strategy):
         test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) """
         test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         idx = 0
-        num_samples = 1024 #1024 # used by FISH mask paper
+        num_samples = 1 #1024 # used by FISH mask paper
 
         for test_batch, test_labels, idxs in test_loader:
             if idx >= num_samples:
                 break
+            
             test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
             # print('idx: ', idx)
             #model.zero_grad() moved this line
@@ -239,5 +253,8 @@ class fisher_mask_sampling(Strategy):
                         sq_grads_expect[i] += gsq.detach().numpy() # sq_grads_expect[i] + gsq
                         del gsq
                     self.net.zero_grad()
-            idx += 1
+                idx += 1
+                if idx >= num_samples:
+                    break
+            
         return sq_grads_expect
