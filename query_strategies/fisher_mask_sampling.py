@@ -9,6 +9,7 @@ import time
 from .strategy import Strategy
 import gc
 import sys
+import pickle
 
 from .bait_sampling import select
 
@@ -132,8 +133,8 @@ class fisher_mask_sampling(Strategy):
                     break
 
           
-        return torch.tensor(log_prob_grads)          
-        # return log_prob_grads
+        # return torch.tensor(log_prob_grads)          
+        return log_prob_grads
 
 
     def query(self, n):
@@ -151,24 +152,28 @@ class fisher_mask_sampling(Strategy):
         xt_end = time.time()
         #logging.info('log_prob_grads_wrt took ', xt_end-xt_start, ' seconds.')
         print('log_prob_grads_wrt took ', xt_end-xt_start, ' seconds.')
+        # with open('logprobgrads.pickle', 'wb') as f: 
+        #     pickle.dump(xt, f)
 
+        torch.cuda.empty_cache()
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
-            batchSize = 100
+            batchSize = 3
             nClass = torch.max(self.Y).item() + 1
-            fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
+            fisher = torch.zeros(xt.shape[-1], xt.shape[-1]).cuda()
             rounds = int(np.ceil(len(self.X) / batchSize))
             for i in range(int(np.ceil(len(self.X) / batchSize))):
                 '''
                 adding individual fisher matrices to compute overall fisher matrix I(theta_^L_t)
                 '''
-              
-                xt_ = xt[i * batchSize : (i + 1) * batchSize].cuda()
+                # print('Fisher for all', i)
+                xt_ = torch.tensor(xt[i * batchSize : (i + 1) * batchSize]).cuda()
                 # print(sys.getsizeof(xt_.flatten()))
-                op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0).detach().cpu()
+                # print(xt_.size())
+                op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0)#.detach().cpu()
                 fisher = fisher + op
-                xt_ = xt_.cpu()
+                # xt_ = xt_.cpu()
                 del xt_, op
                 torch.cuda.empty_cache()
                 gc.collect()
@@ -177,7 +182,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 100
+        batchSize = 3
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
