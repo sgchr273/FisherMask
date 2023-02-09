@@ -84,8 +84,8 @@ class fisher_mask_sampling(Strategy):
         idx = 0
         num_samples = 1
         for test_batch, test_labels, idxs in test_loader:
-            # if idx >= num_samples:
-            #     break
+            """ if idx >= num_samples:
+                break """
             test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
             
             outputs, e1 = self.net(test_batch)
@@ -129,8 +129,8 @@ class fisher_mask_sampling(Strategy):
                     # print('grads', first - start, 'loop:', second - first)
                 idx += 1
                 self.net.zero_grad()
-                # if idx >= num_samples:
-                #     break
+                """ if idx >= num_samples:
+                    break """
 
           
         #return torch.tensor(log_prob_grads)          
@@ -170,7 +170,7 @@ class fisher_mask_sampling(Strategy):
                 '''
                 # print('Fisher for all', i)
                 # xt_ = torch.tensor(xt[i * batchSize : (i + 1) * batchSize]).cuda()
-                xt_ = (xt[i * batchSize : (i + 1) * batchSize]).clone().detach().cuda()
+                xt_ = torch.tensor(xt[i * batchSize : (i + 1) * batchSize]).cuda()
                 # print(sys.getsizeof(xt_.flatten()))
                 # print(xt_.size())
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0)#.detach().cpu()
@@ -195,7 +195,7 @@ class fisher_mask_sampling(Strategy):
             sec_time = time.time()
             for i in range(int(np.ceil(len(xt2) / batchSize))):
                 
-                xt_ = xt2[i * batchSize : (i + 1) * batchSize].cuda()
+                xt_ = torch.tensor(xt2[i * batchSize : (i + 1) * batchSize]).cuda()
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt2)), 0).detach().cpu()
                 init = init + op
                 xt_ = xt_.cpu()

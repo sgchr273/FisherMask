@@ -167,8 +167,8 @@ args['backwardSteps'] = opts.backwardSteps
 # start experiment
 n_pool = len(Y_tr)
 n_test = len(Y_te)
-# n_pool = 100
-# n_test = 100
+#n_pool = 100
+#n_test = 100
 print('number of labeled pool: {}'.format(NUM_INIT_LB), flush=True)
 print('number of unlabeled pool: {}'.format(n_pool - NUM_INIT_LB), flush=True)
 print('number of testing pool: {}'.format(n_test), flush=True)

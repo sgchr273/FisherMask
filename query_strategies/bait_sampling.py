@@ -127,7 +127,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #     dim2=-1
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = 100
+        chunkSize = 80
         #print(X.shape[0])
         for c_idx in range(0, X.shape[0], chunkSize):
             if c_idx % 100 == 0:
