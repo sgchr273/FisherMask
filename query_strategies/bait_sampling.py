@@ -26,6 +26,7 @@ from scipy import stats
 import numpy as np
 import scipy.sparse as sp
 from itertools import product
+import time
 from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
 # from sklearn.metrics.pairwise import euclidean_distances
 # from sklearn.metrics.pairwise import pairwise_distances_argmin_min
@@ -84,10 +85,11 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     # what is lamb used for here?
     #X = X * np.sqrt(K / (nLabeled + K))
     fisher = fisher.cuda()
-
+    total = 0
     # forward selection
-    for i in range(int((backwardSteps + 1) *  K)): 
-        print("Start outer loop iteration ", i)
+    for i in range(int((backwardSteps + 1) *  K)):
+        if(i%100==0):
+            print("Select function for loop: ", i)
         '''
         K corresponds to minibatch size, which is called B in the paper.
         currently we assume that backwardSteps = 0
@@ -127,11 +129,11 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #     dim2=-1
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = 80
+        chunkSize = 2500
         #print(X.shape[0])
+        
+        time_for_inner_loop = time.time()
         for c_idx in range(0, X.shape[0], chunkSize):
-            if c_idx % 100 == 0:
-                print(c_idx)
             xt_chunk = xt_[c_idx * chunkSize : (c_idx + 1) * chunkSize]
             xt_chunk = torch.tensor(xt_chunk).cuda() #.clone().detach()
             innerInv = torch.inverse(torch.eye(rank).cuda() + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
@@ -141,6 +143,9 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
                 dim1=-2, 
                 dim2=-1
             ).sum(-1).detach().cpu()
+        time_for_inner_loop_end = time.time()
+        #print('inner loop time: ', time_for_inner_loop_end-time_for_inner_loop)
+        total += (time_for_inner_loop_end-time_for_inner_loop)
         '''
         Vx^T M^-1 I(θ_L) M^-1 Vx A^-1 formula from page 5 of paper.
         currentInv corresponds to M^-1
@@ -169,21 +174,24 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
                 break
 
         indsAll.append(ind)  # adding a new tilde_x to the minibatch being made
-        print(i, ind, traceEst[ind], flush=True)
+        #print(i, ind, traceEst[ind], flush=True)
        
         xt_ = torch.tensor(X[ind]).unsqueeze(0).cuda()
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
 
+    print("Average time for inner for loop of select function: ", (total/int((backwardSteps + 1) *  K)))
     # backward pruning
-    for i in range(len(indsAll) - K):
+    second_for_loop_time = time.time()
+    rounds = len(indsAll) - K
+    for i in range(rounds):
 
         # select index for removal
         xt_ = torch.tensor(X[indsAll]).cuda()
         innerInv = torch.inverse(-1 * torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         traceEst = torch.diagonal(xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, dim1=-2, dim2=-1).sum(-1)
         delInd = torch.argmin(-1 * traceEst).item()
-        print(i, indsAll[delInd], -1 * traceEst[delInd].item(), flush=True)
+        #print(i, indsAll[delInd], -1 * traceEst[delInd].item(), flush=True)
 
 
         # compute new inverse
@@ -192,7 +200,8 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
 
         del indsAll[delInd]
-
+    second_for_loop_time_end = time.time()
+    print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
     del xt_, innerInv, currentInv
     torch.cuda.empty_cache()
     gc.collect()
