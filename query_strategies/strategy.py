@@ -253,6 +253,9 @@ class Strategy:
         return P
 
     def predict_prob(self, X, Y, model=[], exp=True):
+        '''
+        Y not being used meaningfully
+        '''
         if type(model) == list: model = self.clf
 
         loader_te = DataLoader(self.handler(X, Y, transform=self.args['transformTest']), shuffle=False, **self.args['loader_te_args'])

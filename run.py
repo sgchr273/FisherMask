@@ -18,6 +18,7 @@ import torch
 import time
 import pdb
 from scipy.stats import zscore
+from experiments import decrease_dataset
 
 from query_strategies import RandomSampling, BadgeSampling, \
                                 BaselineSampling, LeastConfidence, MarginSampling, \
@@ -50,6 +51,7 @@ parser.add_argument('--fishIdentity', help='for ablation, setting fisher to be i
 parser.add_argument('--fishInit', help='initialize selection with fisher on seen data', type=int, default=1)
 parser.add_argument('--backwardSteps', help='openML dataset index, if any', type=int, default=1)
 parser.add_argument('--dummy', help='dummy input for indexing replicates', type=int, default=1)
+parser.add_argument('--DEBUG', help='set to True to utilize decreased dataset size for quick run', type=bool, default=False)
 opts = parser.parse_args()
 
 
@@ -85,7 +87,7 @@ args_pool = {'MNIST':
                      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
                  ]),
                  'loader_tr_args':{'batch_size': 128, 'num_workers': 1},
-                 'loader_te_args':{'batch_size': 1000, 'num_workers': 1}, # change back to 1000
+                 'loader_te_args':{'batch_size': 100, 'num_workers': 1}, # change back to 1000
                  'optimizer_args':{'lr': 0.05, 'momentum': 0.3},
                  'transformTest': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])}
                 }
@@ -132,11 +134,11 @@ if opts.did > 0:
 
         if len(np.unique(Y_tr)) == opts.nClasses: break
 
-
+    #changed te args batch size from 1000 to 100
     args = {'transform':transforms.Compose([transforms.ToTensor()]),
             'n_epoch':10,
             'loader_tr_args':{'batch_size': 128, 'num_workers': 1},
-            'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
+            'loader_te_args':{'batch_size': 100, 'num_workers': 1},
             'optimizer_args':{'lr': 0.01, 'momentum': 0},
             'transformTest':transforms.Compose([transforms.ToTensor()])}
     handler = get_handler('other')
@@ -146,6 +148,8 @@ else:
     X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
     opts.dim = np.shape(X_tr)[1:]
     handler = get_handler(opts.data)
+    if opts.DEBUG:
+        X_tr, Y_tr = decrease_dataset(X_tr, Y_tr)
 
 
 if opts.trunc != -1:

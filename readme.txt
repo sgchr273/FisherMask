@@ -5,7 +5,7 @@ python run.py --model resnet --nQuery 1000 --data SVHN --alg bait --nStart 100
 python run.py --model resnet --nQuery 1000 --data CIFAR10 --alg fish --nStart 1000 --nEnd 2000  
 which will select 1000 samples at a time from the SVHN dataset using the BAIT algorithm. The resnet will be retrained after every selection, and the program will not terminate until the entire dataset has been labeled.
 
-
+python experiments.py --model resnet --nQuery 50 --data CIFAR10 --nStart 1 --nEnd 100 --backwardSteps 0 --DEBUG 500
 
 
  

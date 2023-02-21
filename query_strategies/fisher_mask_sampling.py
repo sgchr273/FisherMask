@@ -239,7 +239,7 @@ class fisher_mask_sampling(Strategy):
         test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) """
         test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         idx = 0
-        num_samples = 1024 #1024 # used by FISH mask paper
+        num_samples = 1 #1024 # used by FISH mask paper
 
         for test_batch, test_labels, idxs in test_loader:
             if idx >= num_samples:

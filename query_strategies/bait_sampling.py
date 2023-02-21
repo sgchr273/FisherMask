@@ -88,8 +88,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     total = 0
     # forward selection
     for i in range(int((backwardSteps + 1) *  K)):
-        if(i%100==0):
-            print("Select function for loop: ", i)
+        print("Select function for loop: ", i)
         '''
         K corresponds to minibatch size, which is called B in the paper.
         currently we assume that backwardSteps = 0
@@ -129,7 +128,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #     dim2=-1
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = 2500
+        chunkSize = 100
         #print(X.shape[0])
         
         time_for_inner_loop = time.time()
