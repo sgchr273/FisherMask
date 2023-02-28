@@ -43,6 +43,7 @@ parser.add_argument('--fishIdentity', help='for ablation, setting fisher to be i
 parser.add_argument('--fishInit', help='initialize selection with fisher on seen data', type=int, default=1)
 parser.add_argument('--backwardSteps', help='openML dataset index, if any', type=int, default=1)
 parser.add_argument('--dummy', help='dummy input for indexing replicates', type=int, default=1)
+parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=0)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="defaultsavefilename")
 opts = parser.parse_args()
@@ -197,6 +198,7 @@ def exper(alg):
     args['fishInit'] = opts.fishInit
     args['lamb'] = opts.lamb
     args['backwardSteps'] = opts.backwardSteps
+    args['pct_top'] = opts.pct_top
 
     # start experiment
     n_pool = len(Y_tr)
@@ -305,20 +307,30 @@ def exper(alg):
             update_time = time.time()
             strategy.update(idxs_lb)
             train_time = time.time()
-            print('Update took:', train_time - update_time)
-            strategy.train(verbose=True)
+            # print('Update took:', train_time - update_time)
+            strategy.train(verbose=False)
 
             # round accuracy
             predict_time = time.time()
-            print('Train took:', predict_time - train_time)
+            # print('Train took:', predict_time - train_time)
             P = strategy.predict(X_te, Y_te)
             end_time = time.time()
-            print('Predict took:', end_time - predict_time)
+            # print('Predict took:', end_time - predict_time)
             accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
             save_accuracies(accur, alg, opts.savefile)
             print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
             if sum(~strategy.idxs_lb) < opts.nQuery: break
             if opts.rounds > 0 and rd == (opts.rounds - 1): break
 
-#exper("BAIT")
+start = time.time()
+exper("BAIT")
+bait_time = time.time()
 exper("FISH")
+fish_time = time.time()
+with open(opts.savefile+'.p', "r+b") as savefile:
+    acc_dict = pickle.load(savefile)
+    acc_dict['BAIT_time'] = bait_time
+    acc_dict['FISH_time'] = fish_time
+    pickle.dump(acc_dict, savefile)
+
+    

@@ -15,13 +15,13 @@ from .bait_sampling import select
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def calculate_mask(sq_grads_expect):
+def calculate_mask(sq_grads_expect, pct_top=0.02):
     list_t = list(sq_grads_expect.values())
     combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) 
     list_lengths = [len(ten.flatten()) for ten in list_t]
     cum_lengths = np.cumsum(list_lengths)
     sorted_idxs = np.argsort(combined_arrays)
-    num_top = int(0.02 * len(combined_arrays))
+    num_top = int(pct_top * len(combined_arrays))
     top_idxs = sorted_idxs[-num_top:]
 
     imp_wt_idxs = [[] for i in range(len(list_t))]
@@ -50,6 +50,7 @@ class fisher_mask_sampling(Strategy):
         self.fishInit = args['fishInit']
         self.lamb = args['lamb']
         self.backwardSteps = args['backwardSteps']
+        self.pct_top = args['pct_top']
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -90,43 +91,61 @@ class fisher_mask_sampling(Strategy):
             
             outputs, e1 = self.net(test_batch)
             _, preds = torch.max(outputs, 1)
-            print(torch.sum(preds == test_labels.data) / len(test_labels))
-            print('Batch: ', (idxs.numpy()[-1]+ 1)/len(test_batch) )
+            # print(torch.sum(preds == test_labels.data) / len(test_labels))
+            # print('Batch: ', (idxs.numpy()[-1]+ 1)/len(test_batch) )
 
             probs = F.softmax(outputs, dim=1).to('cpu')
             log_probs = F.log_softmax(outputs, dim=1)
             N, C = log_probs.shape
 
             for n in range(N):
-                # print('N: ', n)
+                if n % 10 == 0: 
+                    TIME = False
+                else: 
+                    TIME = False
                 for c in range(C):
                     start = time.time()
                     grad_list = torch.autograd.grad(log_probs[n][c], parameters, retain_graph=True) # ~0.007 secs
                     first = time.time()
+                    
                     pos = 0
+                    accum_grad = 0
+                    accum_select = 0
+                    accum_assign = 0
                     for i, grad in enumerate(grad_list):    # different layers # ~0.2 secs ~ 0.003 secs per iteration
+                        start_i = time.time()
                         grad = grad.detach().cpu().numpy()  # https://discuss.pytorch.org/t/should-it-really-be-necessary-to-do-var-detach-cpu-numpy/35489
-                        # start = time.time()
+                        grad_time = time.time()
+                        accum_grad += grad_time - start_i
+                        if i % 10 == 0:
+                            TIME_2 = False
+                        else: 
+                            TIME_2 = False
+                        
                         
                         # selected_grads = np.array([grad[t] for t in imp_idxs[i]]).reshape(-1) 
                         selected_grads = grad[masks_list[i]]
+                        select_time = time.time()
+                        accum_select += select_time - grad_time
                         '''
                         trying to remove above for loop
                         use the 62 calculated masks as 
                         selected_grads = grads[mask_i]
                         '''
                         # selected_grads = grad[mask_i].reshape(-1)
-                        # first = time.time()
                         
                         log_prob_grads[idxs[n]][c][pos:(pos+len(imp_idxs[i]))] = selected_grads
-                        # second = time.time()
+                        assign_time = time.time()
+                        accum_assign += assign_time - select_time
                         pos += len(selected_grads)
                         
-                        # print('selection', first - start, 'assignment', second - first)
+                        # if TIME_2: print('selection', first_2 - start_2, 'assignment', second_2 - first_2)
                         # selected_grads = np.array([grad[t] for t in imp_idxs[i]])
                         # log_prob_grads[image][class][slice corresp to ith layer] = selected_grads
                     second = time.time()
-                    # print('grads', first - start, 'loop:', second - first)
+                    if TIME: 
+                        print('grads', first - start, 'loop:', second - first)
+                        print("Avg time for grad", accum_grad / (i+1), "select", accum_select / (i+1), "assign", accum_assign/(i+1))
                 idx += 1
                 self.net.zero_grad()
                 """ if idx >= num_samples:
@@ -144,7 +163,7 @@ class fisher_mask_sampling(Strategy):
         imp_wt_start = time.time()
         #logging.info('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
         print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
-        imp_wt_idxs = calculate_mask(sq_grads_expect)
+        imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
         xt_start = time.time()
         #logging.info('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
         print('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
@@ -204,7 +223,7 @@ class fisher_mask_sampling(Strategy):
                 gc.collect()
 
         sec_time_end = time.time()
-        print('Second for loop took:', sec_time_end-sec_time,'seconds')
+        # print('Second for loop took:', sec_time_end-sec_time,'seconds')
         phat = self.predict_prob(self.X[idxs_unlabeled], self.Y[idxs_unlabeled])
         time_long_end = time.time()
         print('Iterations took:',time_long_end - time_long,'seconds')
@@ -212,8 +231,10 @@ class fisher_mask_sampling(Strategy):
                 str(str(torch.mean(torch.max(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
+        
+        xt = xt[idxs_unlabeled]
         start_for_select = time.time()
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
         end_for_select = time.time()
         print ('Select took', end_for_select - start_for_select, 'seconds')
         print('selected probs: ' +
@@ -239,7 +260,7 @@ class fisher_mask_sampling(Strategy):
         test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) """
         test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         idx = 0
-        num_samples = 1 #1024 # used by FISH mask paper
+        num_samples = 1024 # used by FISH mask paper
 
         for test_batch, test_labels, idxs in test_loader:
             if idx >= num_samples:
@@ -250,8 +271,8 @@ class fisher_mask_sampling(Strategy):
             #model.zero_grad() moved this line
             outputs, e1 = self.net(test_batch)
             _, preds = torch.max(outputs, 1)
-            print(torch.sum(preds == test_labels.data) / len(test_labels))
-            print('Batch: ', (idxs.numpy()[-1]+ 1)/len(test_batch) )
+            # print(torch.sum(preds == test_labels.data) / len(test_labels))
+            # print('Batch: ', (idxs.numpy()[-1]+ 1)/len(test_batch) )
             
             probs = F.softmax(outputs, dim=1).to('cpu')
             log_probs = F.log_softmax(outputs, dim=1)

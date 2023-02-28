@@ -75,20 +75,25 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
     '''
-
+    # print(X.shape, fisher.shape, iterates.shape)
     numEmbs = len(X)
     dim = X.shape[-1]
     rank = X.shape[-2]
     indsAll = []
 
+    start_select = time.time()
     currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
     # what is lamb used for here?
     #X = X * np.sqrt(K / (nLabeled + K))
+    inv_time = time.time()
+    # print("inverse op took ", inv_time - start_select)
     fisher = fisher.cuda()
+    # print("placing fisher in cuda", time.time() - inv_time)
     total = 0
+    total_outer = 0
     # forward selection
     for i in range(int((backwardSteps + 1) *  K)):
-        print("Select function for loop: ", i)
+        # print("Select function for loop: ", i)
         '''
         K corresponds to minibatch size, which is called B in the paper.
         currently we assume that backwardSteps = 0
@@ -128,7 +133,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #     dim2=-1
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = 100
+        chunkSize = 50
         #print(X.shape[0])
         
         time_for_inner_loop = time.time()
@@ -153,13 +158,13 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         innerInv corresponds to A^-1
         '''
 
-        xt = xt_
-        del xt, innerInv
+        # xt = xt_
+        # del xt, innerInv
         #del xt_, innerInv
-        torch.cuda.empty_cache()
-        gc.collect()
-        torch.cuda.empty_cache()
-        gc.collect()
+        # torch.cuda.empty_cache()
+        # gc.collect()
+        # torch.cuda.empty_cache()
+        # gc.collect()
 
         # traceEst = traceEst.detach().cpu().numpy() # objective value in eq (5) from the paper
 
@@ -178,8 +183,11 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         xt_ = torch.tensor(X[ind]).unsqueeze(0).cuda()
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
+        time_for_outer_loop = time.time()
+        total_outer += time_for_outer_loop - time_for_inner_loop_end
 
-    print("Average time for inner for loop of select function: ", (total/int((backwardSteps + 1) *  K)))
+    # print("Average time for inner for loop of select function: ", (total/int((backwardSteps + 1) *  K)))
+    # print("Average time for outer for loop of select function: ", (total_outer/int((backwardSteps + 1) *  K)))
     # backward pruning
     second_for_loop_time = time.time()
     rounds = len(indsAll) - K
@@ -200,10 +208,11 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
 
         del indsAll[delInd]
     second_for_loop_time_end = time.time()
-    print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
+    # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
     del xt_, innerInv, currentInv
     torch.cuda.empty_cache()
     gc.collect()
+    # print("final part of select takes", time.time()-second_for_loop_time_end)
     return indsAll
 
 class BaitSampling(Strategy):
