@@ -10,6 +10,7 @@ from .strategy import Strategy
 import gc
 import sys
 import pickle
+import os
 
 from .bait_sampling import select
 
@@ -42,6 +43,36 @@ def calculate_mask(sq_grads_expect, pct_top=0.02):
             prev_length = length
     return imp_wt_idxs
 
+def save_imp_weights(new_imp_wt_idxs, filename):
+    try:
+        savefile = open("./Save/Imp_weights/imp_wts_idxs_"+ filename+'.p', "br")
+        imp_wt_idxs = pickle.load(savefile)
+        savefile.close()
+    except:
+        imp_wt_idxs = []
+    finally:
+        if not os.path.exists("./Save/Imp_weights"):
+            os.makedirs("./Save/Imp_weights")
+        savefile = open("./Save/Imp_weights/imp_wts_idxs_"+ filename+'.p', "bw")
+        imp_wt_idxs.append(new_imp_wt_idxs)
+        pickle.dump(imp_wt_idxs, savefile)
+        savefile.close()
+
+def save_queried_idx(idx,filename):
+    try:
+        savefile = open("./Save/Queried_idxs/queried_idxs_"+ filename+'.p', "br")
+        que_idxs = pickle.load(savefile)
+        savefile.close()
+    except:
+        que_idxs = []
+    finally:
+        if not os.path.exists("./Save/Queried_idxs"):
+            os.makedirs("./Save/Queried_idxs")
+        savefile = open("./Save/Queried_idxs/queried_idxs_"+ filename+'.p', "bw")
+        que_idxs.append(idx)
+        pickle.dump(que_idxs, savefile)
+        savefile.close()
+
 
 class fisher_mask_sampling(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args):
@@ -51,6 +82,7 @@ class fisher_mask_sampling(Strategy):
         self.lamb = args['lamb']
         self.backwardSteps = args['backwardSteps']
         self.pct_top = args['pct_top']
+        self.savefile = args["savefile"]
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -164,6 +196,8 @@ class fisher_mask_sampling(Strategy):
         #logging.info('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
         print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
         imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
+
+        save_imp_weights(imp_wt_idxs, self.savefile)
         xt_start = time.time()
         #logging.info('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
         print('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
@@ -235,6 +269,7 @@ class fisher_mask_sampling(Strategy):
         xt = xt[idxs_unlabeled]
         start_for_select = time.time()
         chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        save_queried_idx(chosen, self.savefile)
         end_for_select = time.time()
         print ('Select took', end_for_select - start_for_select, 'seconds')
         print('selected probs: ' +

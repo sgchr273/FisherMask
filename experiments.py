@@ -45,7 +45,7 @@ parser.add_argument('--backwardSteps', help='openML dataset index, if any', type
 parser.add_argument('--dummy', help='dummy input for indexing replicates', type=int, default=1)
 parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=0)
-parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="defaultsavefilename")
+parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
 opts = parser.parse_args()
 
 
@@ -76,16 +76,26 @@ def save_accuracies(new_acc, alg, filename):
     if alg != "FISH" and alg != "BAIT":
         raise NameError("Invalid algorithm choice.")
     try:
-        savefile = open(filename+'.p', "br")
+        savefile = open("./Save/Round_accuracies/Accuracy_for_"+filename+'.p', "br")
         acc_dict = pickle.load(savefile)
         savefile.close()
     except:
         acc_dict = {"FISH":[],"BAIT":[]}
     finally:
-        savefile = open(filename+'.p', "bw")
+        if not os.path.exists("./Save/Round_accuracies"):
+            os.makedirs("./Save/Round_accuracies")
+        savefile = open("./Save/Round_accuracies/Accuracy_for_"+filename+'.p', "bw")
         acc_dict[alg].append(new_acc)
         pickle.dump(acc_dict, savefile)
         savefile.close()
+
+def save_model(rd,net,filename):
+    if not os.path.exists("./Save/Models/" + filename):
+        os.makedirs("./Save/Models/"+filename)
+    torch.save(net.state_dict(), "./Save/Models/"+ filename +"/model_" +  str(rd)+ ".pt")
+
+def load_model(rd,net,filename):
+    net.load_state_dict(torch.load("./Save/Models/"+ filename +"/model_" +  str(rd) + ".pt"))
         
 def exper(alg):
     # parameters
@@ -181,6 +191,11 @@ def exper(alg):
         handler = get_handler(opts.data)
         if opts.DEBUG:
             X_tr, Y_tr = decrease_dataset(X_tr, Y_tr)
+            if not os.path.exists("./Save/Queried_idxs/"):
+                os.makedirs("./Save/Queried_idxs")
+            data_dict = {'X_train':X_tr, 'Y_train': Y_tr}
+            with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "wb") as savefile:
+                pickle.dump(data_dict, savefile)
 
 
     if opts.trunc != -1:
@@ -199,6 +214,7 @@ def exper(alg):
     args['lamb'] = opts.lamb
     args['backwardSteps'] = opts.backwardSteps
     args['pct_top'] = opts.pct_top
+    args['savefile'] = opts.savefile
 
     # start experiment
     n_pool = len(Y_tr)
@@ -249,7 +265,7 @@ def exper(alg):
 
     # load specified network
     if opts.model == 'mlp':
-        net = mlpMod(opts.dim, embSize=opts.nEmb)
+        net = mlpMod(opts.dim, netembSize=opts.nEmb)
     elif opts.model == 'resnet':
         net = resnet.ResNet18()
     elif opts.model == 'vgg':
@@ -292,6 +308,7 @@ def exper(alg):
         print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
 
         for rd in range(1, NUM_ROUND+1):
+            save_model(rd, net, opts.savefile)
             print('Round {}'.format(rd), flush=True)
             torch.cuda.empty_cache()
             gc.collect()
@@ -327,7 +344,7 @@ exper("BAIT")
 bait_time = time.time()
 exper("FISH")
 fish_time = time.time()
-with open(opts.savefile+'.p', "r+b") as savefile:
+with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
     acc_dict = pickle.load(savefile)
     acc_dict['BAIT_time'] = bait_time
     acc_dict['FISH_time'] = fish_time
