@@ -269,7 +269,7 @@ class fisher_mask_sampling(Strategy):
         xt = xt[idxs_unlabeled]
         start_for_select = time.time()
         chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
-        save_queried_idx(chosen, self.savefile)
+        save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         end_for_select = time.time()
         print ('Select took', end_for_select - start_for_select, 'seconds')
         print('selected probs: ' +

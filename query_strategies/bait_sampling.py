@@ -26,6 +26,7 @@ from scipy import stats
 import numpy as np
 import scipy.sparse as sp
 from itertools import product
+import os
 import time
 from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
 # from sklearn.metrics.pairwise import euclidean_distances
@@ -69,6 +70,22 @@ def getUse():
                 print(type(obj), obj.size())
         except:
             pass
+
+
+def save_queried_idx(idx,filename):
+    try:
+        savefile = open("./Save/Queried_idxs/bait_queried_idxs_"+ filename+'.p', "br")
+        que_idxs = pickle.load(savefile)
+        savefile.close()
+    except:
+        que_idxs = []
+    finally:
+        if not os.path.exists("./Save/Queried_idxs"):
+            os.makedirs("./Save/Queried_idxs")
+        savefile = open("./Save/Queried_idxs/bait_queried_idxs_"+ filename+'.p', "bw")
+        que_idxs.append(idx)
+        pickle.dump(que_idxs, savefile)
+        savefile.close()
 
 def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     '''
@@ -223,6 +240,7 @@ class BaitSampling(Strategy):
         self.fishInit = args['fishInit']
         self.lamb = args['lamb']
         self.backwardSteps = args['backwardSteps']
+        self.savefile = args["savefile"]
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
@@ -291,6 +309,7 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         
         chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
