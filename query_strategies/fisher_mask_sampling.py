@@ -23,7 +23,16 @@ def calculate_mask(sq_grads_expect, pct_top=0.02):
     cum_lengths = np.cumsum(list_lengths)
     sorted_idxs = np.argsort(combined_arrays)
     num_top = int(pct_top * len(combined_arrays))
-    top_idxs = sorted_idxs[-num_top:]
+    # top_idxs = sorted_idxs[-num_top:]
+
+    num_last_layer = sum(list_lengths[-2:]) # last layer weight and bias
+    if num_last_layer < num_top:
+        top_idxs = np.hstack(
+            [sorted_idxs[-(num_top - num_last_layer):], 
+            np.arange(cum_lengths[-3], len(combined_arrays))]
+        )
+    else:
+        raise ValueError("too small top percentage")
 
     imp_wt_idxs = [[] for i in range(len(list_t))]
     for idx in top_idxs:
