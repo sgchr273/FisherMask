@@ -4,5 +4,5 @@ data*
 *.pth
 *.pickle
 *.png
-__pycache__/
+*/__pycache__/
 Save*

@@ -44,7 +44,7 @@ parser.add_argument('--fishInit', help='initialize selection with fisher on seen
 parser.add_argument('--backwardSteps', help='openML dataset index, if any', type=int, default=1)
 parser.add_argument('--dummy', help='dummy input for indexing replicates', type=int, default=1)
 parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
-parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=0)
+parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=50)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
 opts = parser.parse_args()
 
@@ -340,7 +340,7 @@ def exper(alg):
             if opts.rounds > 0 and rd == (opts.rounds - 1): break
 
 start = time.time()
-exper("BAIT")
+# exper("BAIT")
 bait_time = time.time()
 exper("FISH")
 fish_time = time.time()

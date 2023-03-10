@@ -25,12 +25,16 @@ def calculate_mask(sq_grads_expect, pct_top=0.02):
     num_top = int(pct_top * len(combined_arrays))
     # top_idxs = sorted_idxs[-num_top:]
 
-    num_last_layer = sum(list_lengths[-2:]) # last layer weight and bias
+    num_last_layer = sum(list_lengths[-1:]) 
+    # in FISH ResNet architecture, the last layer has bias=False
+    # if last layer has both weight and bias, set -1 to -2 above
+
     if num_last_layer < num_top:
         top_idxs = np.hstack(
             [sorted_idxs[-(num_top - num_last_layer):], 
-            np.arange(cum_lengths[-3], len(combined_arrays))]
+            np.arange(cum_lengths[-2], len(sorted_idxs))]
         )
+        assert len(top_idxs) == num_top
     else:
         raise ValueError("too small top percentage")
 
