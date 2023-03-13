@@ -50,8 +50,9 @@ def calculate_mask(sq_grads_expect, pct_top=0.02):
                     '''pass only numpy or python objects to numpy functions'''
                     # s_num[len_idx].append([idx[0] for idx in idx_tuple])
                     imp_wt_idxs[idx_layer_num].append(idx_tuple)
-                except IndexError:
+                except Exception:
                     print("caught error: ", idx, idx_layer_num, length, imp_wt_idxs)
+                    raise
                 break
             prev_length = length
     return imp_wt_idxs
