@@ -21,7 +21,7 @@ def calculate_mask(sq_grads_expect, pct_top=0.02):
     combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) 
     list_lengths = [len(ten.flatten()) for ten in list_t]
     cum_lengths = np.cumsum(list_lengths)
-    sorted_idxs = np.argsort(combined_arrays)
+    sorted_idxs = np.argsort(combined_arrays[:cum_lengths[-2]])
     num_top = int(pct_top * len(combined_arrays))
     # top_idxs = sorted_idxs[-num_top:]
 
@@ -32,7 +32,7 @@ def calculate_mask(sq_grads_expect, pct_top=0.02):
     if num_last_layer < num_top:
         top_idxs = np.hstack(
             [sorted_idxs[-(num_top - num_last_layer):], 
-            np.arange(cum_lengths[-2], len(sorted_idxs))]
+            np.arange(cum_lengths[-2], cum_lengths[-1])]
         )
         assert len(top_idxs) == num_top
     else:
