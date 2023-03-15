@@ -190,9 +190,10 @@ def exper(alg):
         opts.dim = np.shape(X_tr)[1:]
         handler = get_handler(opts.data)
         if opts.DEBUG:
-            X_tr, Y_tr = decrease_dataset(X_tr, Y_tr)
+            X_tr, Y_tr = decrease_dataset(X_tr, Y_tr) # move outside exper function
+                                                        # so that BAIT and FISH work on same
             if not os.path.exists("./Save/Queried_idxs/"):
-                os.makedirs("./Save/Queried_idxs")
+                os.makedirs("./Save/Queried_idxs") 
             data_dict = {'X_train':X_tr, 'Y_train': Y_tr}
             with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "wb") as savefile:
                 pickle.dump(data_dict, savefile)
