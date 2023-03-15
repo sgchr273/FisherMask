@@ -340,7 +340,7 @@ def exper(alg):
             if opts.rounds > 0 and rd == (opts.rounds - 1): break
 
 start = time.time()
-# exper("BAIT")
+exper("BAIT")
 bait_time = time.time()
 exper("FISH")
 fish_time = time.time()
