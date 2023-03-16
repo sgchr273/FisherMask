@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from copy import deepcopy
 import pdb
 import resnet
+from torchvision.models import resnet18, ResNet18_Weights
 from torch.distributions.categorical import Categorical
 class Strategy:
     def __init__(self, X, Y, idxs_lb, net, handler, args):
@@ -57,7 +58,8 @@ class Strategy:
         if type(optimizer) == int: optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
-        loader_tr = DataLoader(self.handler(self.X[idxs_train], torch.Tensor(self.Y.numpy()[idxs_train]).long(), transform=self.args['transform']), shuffle=True, **self.args['loader_tr_args'])
+        preprocess = ResNet18_Weights.DEFAULT.transforms()
+        loader_tr = DataLoader(self.handler(self.X[idxs_train], torch.Tensor(self.Y.numpy()[idxs_train]).long(), transform = preprocess), shuffle=True, **self.args['loader_tr_args'])
         if len(data) > 0:
             loader_tr = DataLoader(self.handler(data[0], torch.Tensor(data[1]).long(), transform=self.args['transform']), shuffle=True, **self.args['loader_tr_args'])
 

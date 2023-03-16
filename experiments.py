@@ -47,12 +47,15 @@ parser.add_argument('--pct_top', help='percentage of important weights to use fo
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=50)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
 opts = parser.parse_args()
+NUM_INIT_LB = opts.nStart
+NUM_QUERY = opts.nQuery
+NUM_ROUND = int((opts.nEnd - NUM_INIT_LB)/ opts.nQuery)
+DATA_NAME = opts.data
 
 
 def decrease_dataset(X_tr, Y_tr):
     new_size = opts.DEBUG
     masks = [np.zeros(len(Y_tr), dtype = 'int') for i in range(10)]
-    print(len(masks))
     for i in range(len(Y_tr)):
         masks[Y_tr[i].item()][i] = 1
 
@@ -97,12 +100,63 @@ def save_model(rd,net,filename):
 def load_model(rd,net,filename):
     net.load_state_dict(torch.load("./Save/Models/"+ filename +"/model_" +  str(rd) + ".pt"))
         
-def exper(alg):
-    # parameters
-    NUM_INIT_LB = opts.nStart
-    NUM_QUERY = opts.nQuery
-    NUM_ROUND = int((opts.nEnd - NUM_INIT_LB)/ opts.nQuery)
-    DATA_NAME = opts.data
+def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
+    # set up the specified sampler
+    if alg == 'BAIT': # bait sampling
+        strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'FISH': # fisher mask based sampling
+        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+    else: 
+        print('choose a valid acquisition function', flush=True)
+        raise ValueError
+
+    # print info
+    if opts.did > 0: DATA_NAME='OML' + str(opts.did)
+    print(DATA_NAME, flush=True)
+    print(type(strategy).__name__, flush=True)
+
+    if type(X_te) == torch.Tensor: X_te = X_te.numpy()
+
+    # round 0 accuracy
+    if __name__ == '__main__': # < -- remove this if to go back to original
+        strategy.train()
+        P = strategy.predict(X_te, Y_te)
+        accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
+        print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
+
+        for rd in range(1, NUM_ROUND+1):
+            save_model(rd, net, opts.savefile)
+            print('Round {}'.format(rd), flush=True)
+            torch.cuda.empty_cache()
+            gc.collect()
+            torch.cuda.empty_cache()
+            gc.collect()
+
+            # query
+            output = strategy.query(NUM_QUERY)
+            q_idxs = output
+            idxs_lb[q_idxs] = True
+
+            # update
+            update_time = time.time()
+            strategy.update(idxs_lb)
+            train_time = time.time()
+            # print('Update took:', train_time - update_time)
+            strategy.train(verbose=False)
+
+            # round accuracy
+            predict_time = time.time()
+            # print('Train took:', predict_time - train_time)
+            P = strategy.predict(X_te, Y_te)
+            end_time = time.time()
+            # print('Predict took:', end_time - predict_time)
+            accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
+            save_accuracies(accur, alg, opts.savefile)
+            print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
+            if sum(~strategy.idxs_lb) < opts.nQuery: break
+            if opts.rounds > 0 and rd == (opts.rounds - 1): break
+
+def main():
 
     # non-openml data defaults
     args_pool = {'MNIST':
@@ -198,15 +252,14 @@ def exper(alg):
             with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "wb") as savefile:
                 pickle.dump(data_dict, savefile)
 
-
-    if opts.trunc != -1:
-        inds = np.random.permutation(len(X_tr))[:opts.trunc]
-        X_tr = X_tr[inds]
-        Y_tr = Y_tr[inds]
-        inds = torch.where(Y_tr < 10)[0]
-        X_tr = X_tr[inds]
-        Y_tr = Y_tr[inds]
-        opts.nClasses = int(max(Y_tr) + 1)
+        if opts.trunc != -1:
+            inds = np.random.permutation(len(X_tr))[:opts.trunc]
+            X_tr = X_tr[inds]
+            Y_tr = Y_tr[inds]
+            inds = torch.where(Y_tr < 10)[0]
+            X_tr = X_tr[inds]
+            Y_tr = Y_tr[inds]
+            opts.nClasses = int(max(Y_tr) + 1)
 
     args['lr'] = opts.lr
     args['modelType'] = opts.model
@@ -285,70 +338,16 @@ def exper(alg):
     if type(X_tr[0]) is not np.ndarray:
         X_tr = X_tr.numpy()
 
-    # set up the specified sampler
-    if alg == 'BAIT': # bait sampling
-        strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-    elif alg == 'FISH': # fisher mask based sampling
-        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-    else: 
-        print('choose a valid acquisition function', flush=True)
-        raise ValueError
 
-    # print info
-    if opts.did > 0: DATA_NAME='OML' + str(opts.did)
-    print(DATA_NAME, flush=True)
-    print(type(strategy).__name__, flush=True)
+    start = time.time()
+    exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
+    bait_time = time.time()
+    exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+    fish_time = time.time()
+    with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
+        acc_dict = pickle.load(savefile)
+        acc_dict['BAIT_time'] = bait_time
+        acc_dict['FISH_time'] = fish_time
+        pickle.dump(acc_dict, savefile)
 
-    if type(X_te) == torch.Tensor: X_te = X_te.numpy()
-
-    # round 0 accuracy
-    if __name__ == '__main__': # < -- remove this if to go back to original
-        strategy.train()
-        P = strategy.predict(X_te, Y_te)
-        accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-        print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
-
-        for rd in range(1, NUM_ROUND+1):
-            save_model(rd, net, opts.savefile)
-            print('Round {}'.format(rd), flush=True)
-            torch.cuda.empty_cache()
-            gc.collect()
-            torch.cuda.empty_cache()
-            gc.collect()
-
-            # query
-            output = strategy.query(NUM_QUERY)
-            q_idxs = output
-            idxs_lb[q_idxs] = True
-
-            # update
-            update_time = time.time()
-            strategy.update(idxs_lb)
-            train_time = time.time()
-            # print('Update took:', train_time - update_time)
-            strategy.train(verbose=False)
-
-            # round accuracy
-            predict_time = time.time()
-            # print('Train took:', predict_time - train_time)
-            P = strategy.predict(X_te, Y_te)
-            end_time = time.time()
-            # print('Predict took:', end_time - predict_time)
-            accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-            save_accuracies(accur, alg, opts.savefile)
-            print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
-            if sum(~strategy.idxs_lb) < opts.nQuery: break
-            if opts.rounds > 0 and rd == (opts.rounds - 1): break
-
-start = time.time()
-exper("BAIT")
-bait_time = time.time()
-exper("FISH")
-fish_time = time.time()
-with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
-    acc_dict = pickle.load(savefile)
-    acc_dict['BAIT_time'] = bait_time
-    acc_dict['FISH_time'] = fish_time
-    pickle.dump(acc_dict, savefile)
-
-    
+main()

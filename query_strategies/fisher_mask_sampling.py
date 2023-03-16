@@ -125,9 +125,9 @@ class fisher_mask_sampling(Strategy):
             param.requires_grad = True
         self.net.eval()
         parameters = tuple(self.net.parameters())
-        
-        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
-        
+        preprocess = ResNet18_Weights.DEFAULT.transforms()
+        # test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=preprocess), shuffle=False, **self.args['loader_te_args'])
         idx = 0
         num_samples = 1
         for test_batch, test_labels, idxs in test_loader:
@@ -304,11 +304,11 @@ class fisher_mask_sampling(Strategy):
         parameters = tuple(self.net.parameters())
         sq_grads_expect = {i: np.zeros(p.shape) for i, p in enumerate(parameters)}
 
-        """ preprocess = ResNet18_Weights.DEFAULT.transforms()
-        processed_testset = datasets.CIFAR10(root='./data/CIFAR10', train=False, download=True, transform=preprocess)
-        test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) """
-        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
-        idx = 0
+        preprocess = ResNet18_Weights.DEFAULT.transforms()
+        # processed_testset = datasets.CIFAR10(root='./data/CIFAR10', train=False, download=True, transform=preprocess)
+        # test_loader = DataLoader(processed_testset, batch_size=1, shuffle=False, num_workers=2, pin_memory=True) 
+        # test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=preprocess), shuffle=False, **self.args['loader_te_args']) # 'transformTest'
         num_samples = 1024 # used by FISH mask paper
 
         for test_batch, test_labels, idxs in test_loader:
