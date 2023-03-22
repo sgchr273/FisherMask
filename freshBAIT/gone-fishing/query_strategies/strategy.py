@@ -9,7 +9,6 @@ from torch.utils.data import DataLoader
 from copy import deepcopy
 import pdb
 import resnet
-from torchvision.models import resnet18, ResNet18_Weights
 from torch.distributions.categorical import Categorical
 class Strategy:
     def __init__(self, X, Y, idxs_lb, net, handler, args):
@@ -58,8 +57,7 @@ class Strategy:
         if type(optimizer) == int: optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
-        # preprocess = ResNet18_Weights.DEFAULT.transforms()
-        loader_tr = DataLoader(self.handler(self.X[idxs_train], torch.Tensor(self.Y.numpy()[idxs_train]).long(), transform = self.args['transform']), shuffle=True, **self.args['loader_tr_args'])
+        loader_tr = DataLoader(self.handler(self.X[idxs_train], torch.Tensor(self.Y.numpy()[idxs_train]).long(), transform=self.args['transform']), shuffle=True, **self.args['loader_tr_args'])
         if len(data) > 0:
             loader_tr = DataLoader(self.handler(data[0], torch.Tensor(data[1]).long(), transform=self.args['transform']), shuffle=True, **self.args['loader_tr_args'])
 
@@ -255,9 +253,6 @@ class Strategy:
         return P
 
     def predict_prob(self, X, Y, model=[], exp=True):
-        '''
-        Y not being used meaningfully
-        '''
         if type(model) == list: model = self.clf
 
         loader_te = DataLoader(self.handler(X, Y, transform=self.args['transformTest']), shuffle=False, **self.args['loader_te_args'])
@@ -381,19 +376,14 @@ class Strategy:
 
     # gradient embedding (assumes cross-entropy loss)
     def get_exp_grad_embedding(self, X, Y, probs=[], model=[]):
-        '''
-        even though all the labels are provided as input through Y,
-        the function does not use any of the labels in its computation.
-        Corresponds to Appendix A.2 of the paper.
-        '''
         if type(model) == list:
             model = self.clf
 
-        embDim = model.get_embedding_dim() # = num of neurons in the penultimate layer = d in the paper
+        embDim = model.get_embedding_dim()
         model.eval()
-        nLab = len(np.unique(Y)) # = num of classes = k in the paper
+        nLab = len(np.unique(Y))
 
-        embedding = np.zeros([len(Y), nLab, embDim * nLab]) # of size num images in dataset x k x dk
+        embedding = np.zeros([len(Y), nLab, embDim * nLab])
         for ind in range(nLab):
             loader_te = DataLoader(self.handler(X, Y, transform=self.args['transformTest']),
                             shuffle=False, **self.args['loader_te_args'])

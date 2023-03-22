@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH --job-name=CIFAR10_Experiment
+#SBATCH --ntasks=1
+#SBATCH --time=02-00:00:00
+#SBATCH --export=all
+#SBATCH --out=Foundry-%j.out
+#SBATCH -p cuda
+#SBATCH --exclusive  # Yolov5s model   
+#SBATCH --mail-type=begin,end,fail,requeue
+#SBATCH --nodes=1                # node count
+#SBATCH --gres=gpu:1           # number of gpus per node
+
+python run.py --model resnet --nQuery 1200 --data CIFAR10 --nStart 1000 --nEnd 25000 --backwardSteps 0  --savefile freshbait  --aug 1  --DEBUG 25000
