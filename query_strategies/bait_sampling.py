@@ -118,26 +118,6 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
 
         # xt_ = X.cuda()
         xt_ = X  
-        '''
-        in the calculation below, traceEst has X.shape[0] elements.
-        The calculation done for computing one element of traceEst
-        has no effect on the calculation done for computing other
-        elements of traceEst. This suggests that we can compute  
-        tracEst in chunks, rather than computing all elements in 
-        one go.
-
-        traceEst = torch.zeros(X.shape[0])
-        chunkSize = 100
-        for c_idx in range(0, X.shape[0], chunkSize):
-            xt_chunk = xt_[c_idx * chunkSize : (c_idx + 1) * chunkSize]
-            innerInv = torch.inverse(torch.eye(rank).cpu() + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2)).detach()
-            traceEst[c_idx * chunkSize : (c_idx + 1) * chunkSize] = torch.diagonal(
-                xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv, 
-                dim1=-2, 
-                dim2=-1
-            ).sum(-1) 
-        '''
-
 
         # innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         # innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
@@ -150,7 +130,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #     dim2=-1
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = 100
+        chunkSize = min(X.shape[0], 100) # replace 100 by chunkSize argument
         #print(X.shape[0])
         
         time_for_inner_loop = time.time()
