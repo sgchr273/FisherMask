@@ -43,6 +43,7 @@ from sklearn.utils.validation import FLOAT_DTYPES
 # from sklearn.metrics.pairwise import rbf_kernel as rbf
 from sklearn.exceptions import ConvergenceWarning
 # from sklearn.metrics import pairwise_distances
+import logging
 
 # kmeans ++ initialization
 def batchOuterProdDet(X, A, batchSize):
@@ -98,16 +99,16 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     rank = X.shape[-2]
     indsAll = []
 
-    start_select = time.time()
+    #start_select = time.time()
     currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
     # what is lamb used for here?
     #X = X * np.sqrt(K / (nLabeled + K))
-    inv_time = time.time()
+    #inv_time = time.time()
     # print("inverse op took ", inv_time - start_select)
     fisher = fisher.cuda()
     # print("placing fisher in cuda", time.time() - inv_time)
     total = 0
-    total_outer = 0
+    #total_outer = 0
     # forward selection
     for i in range(int((backwardSteps + 1) *  K)):
         # print("Select function for loop: ", i)
@@ -180,13 +181,13 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         xt_ = torch.tensor(X[ind]).unsqueeze(0).cuda()
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
-        time_for_outer_loop = time.time()
-        total_outer += time_for_outer_loop - time_for_inner_loop_end
+        #time_for_outer_loop = time.time()
+        #total_outer += time_for_outer_loop - time_for_inner_loop_end
 
-    # print("Average time for inner for loop of select function: ", (total/int((backwardSteps + 1) *  K)))
+    logging.debug("Average time of chunk loop: ", (total/int((backwardSteps + 1) *  K)))
     # print("Average time for outer for loop of select function: ", (total_outer/int((backwardSteps + 1) *  K)))
     # backward pruning
-    second_for_loop_time = time.time()
+    #second_for_loop_time = time.time()
     rounds = len(indsAll) - K
     for i in range(rounds):
 
@@ -204,7 +205,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
 
         del indsAll[delInd]
-    second_for_loop_time_end = time.time()
+    #second_for_loop_time_end = time.time()
     # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
     del xt_, innerInv, currentInv
     torch.cuda.empty_cache()

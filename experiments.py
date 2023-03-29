@@ -13,6 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 import torch.nn.functional as F
 from torch import nn
 import time
+import logging
 
 from query_strategies import RandomSampling, BadgeSampling, \
                                 BaselineSampling, LeastConfidence, MarginSampling, \
@@ -51,6 +52,7 @@ NUM_INIT_LB = opts.nStart
 NUM_QUERY = opts.nQuery
 NUM_ROUND = int((opts.nEnd - NUM_INIT_LB)/ opts.nQuery)
 DATA_NAME = opts.data
+logging.basicConfig(level=logging.DEBUG, filename=opts.savefile + '.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 
 def decrease_dataset(X_tr, Y_tr):

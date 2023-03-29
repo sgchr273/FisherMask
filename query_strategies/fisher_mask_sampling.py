@@ -11,6 +11,7 @@ import gc
 import sys
 import pickle
 import os
+import logging
 
 from .bait_sampling import select
 
@@ -285,7 +286,8 @@ class fisher_mask_sampling(Strategy):
         chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         end_for_select = time.time()
-        print ('Select took', end_for_select - start_for_select, 'seconds')
+        #print ('Select took', end_for_select - start_for_select, 'seconds')
+        logging.debug('Select took', end_for_select - start_for_select, 'seconds')
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
