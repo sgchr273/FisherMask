@@ -98,6 +98,7 @@ class fisher_mask_sampling(Strategy):
         self.backwardSteps = args['backwardSteps']
         self.pct_top = args['pct_top']
         self.savefile = args["savefile"]
+        self.chunkSize = args["chunkSize"]
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -283,11 +284,11 @@ class fisher_mask_sampling(Strategy):
         
         xt = xt[idxs_unlabeled]
         start_for_select = time.time()
-        chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         end_for_select = time.time()
         #print ('Select took', end_for_select - start_for_select, 'seconds')
-        logging.debug('Select took', end_for_select - start_for_select, 'seconds')
+        logging.debug("Select took" + str(end_for_select - start_for_select) + "seconds")
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +

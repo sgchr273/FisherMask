@@ -88,7 +88,7 @@ def save_queried_idx(idx,filename):
         pickle.dump(que_idxs, savefile)
         savefile.close()
 
-def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
+def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=100):
     '''
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
@@ -102,7 +102,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
     #start_select = time.time()
     currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
     # what is lamb used for here?
-    #X = X * np.sqrt(K / (nLabeled + K))
+    X = X * np.sqrt(K / (nLabeled + K))
     #inv_time = time.time()
     # print("inverse op took ", inv_time - start_select)
     fisher = fisher.cuda()
@@ -131,7 +131,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #     dim2=-1
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = min(X.shape[0], 100) # replace 100 by chunkSize argument
+        chunkSize = min(X.shape[0], chunkSize) # replace 100 by chunkSize argument
         #print(X.shape[0])
         
         time_for_inner_loop = time.time()
@@ -184,7 +184,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         #time_for_outer_loop = time.time()
         #total_outer += time_for_outer_loop - time_for_inner_loop_end
 
-    logging.debug("Average time of chunk loop: ", (total/int((backwardSteps + 1) *  K)))
+    logging.debug("Average time of chunk loop: " + str(total/int((backwardSteps + 1) *  K)))
     # print("Average time for outer for loop of select function: ", (total_outer/int((backwardSteps + 1) *  K)))
     # backward pruning
     #second_for_loop_time = time.time()
@@ -222,6 +222,7 @@ class BaitSampling(Strategy):
         self.lamb = args['lamb']
         self.backwardSteps = args['backwardSteps']
         self.savefile = args["savefile"]
+        self.chunkSize = args["chunkSize"]
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
@@ -289,7 +290,7 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
