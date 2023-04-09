@@ -149,23 +149,23 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
         #print('inner loop time: ', time_for_inner_loop_end-time_for_inner_loop)
         total += (time_for_inner_loop_end-time_for_inner_loop)
         '''
-def time_chunk(chunkSize):
-    total=0
-    traceEst = np.zeros(xt_.shape[0])
-    chunkSize = min(xt_.shape[0], chunkSize)
-    time_for_inner_loop = time.time()
-    for c_idx in range(0, X.shape[0], chunkSize):
-        xt_chunk = xt_[c_idx : c_idx + chunkSize]
-        xt_chunk = xt_chunk.clone().detach().cuda() #torch.tensor()
-        innerInv = torch.inverse(torch.eye(rank).cuda() + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
-        traceEst[c_idx : c_idx + chunkSize] = torch.diagonal(
-            xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv, 
-            dim1=-2, 
-            dim2=-1
-        ).sum(-1).detach().cpu()
-    time_for_inner_loop_end = time.time()
-    total += (time_for_inner_loop_end-time_for_inner_loop)
-    return total
+        def time_chunk(chunkSize):
+            total=0
+            traceEst = np.zeros(xt_.shape[0])
+            chunkSize = min(xt_.shape[0], chunkSize)
+            time_for_inner_loop = time.time()
+            for c_idx in range(0, X.shape[0], chunkSize):
+                xt_chunk = xt_[c_idx : c_idx + chunkSize]
+                xt_chunk = xt_chunk.clone().detach().cuda() #torch.tensor()
+                innerInv = torch.inverse(torch.eye(rank).cuda() + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
+                traceEst[c_idx : c_idx + chunkSize] = torch.diagonal(
+                    xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv, 
+                    dim1=-2, 
+                    dim2=-1
+                ).sum(-1).detach().cpu()
+            time_for_inner_loop_end = time.time()
+            total += (time_for_inner_loop_end-time_for_inner_loop)
+            return total
 
         Vx^T M^-1 I(θ_L) M^-1 Vx A^-1 formula from page 5 of paper.
         currentInv corresponds to M^-1
