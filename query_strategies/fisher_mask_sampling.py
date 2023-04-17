@@ -12,15 +12,16 @@ import sys
 import pickle
 import os
 import logging
+import random
 
 from .bait_sampling import select
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def calculate_mask(sq_grads_expect, pct_top=0.02):
-    list_t = list(sq_grads_expect.values())
-    combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) 
-    list_lengths = [len(ten.flatten()) for ten in list_t]
+    list_t = list(sq_grads_expect.values())#same dim as model
+    combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) #dim 61 with grad values flattened for each layer
+    list_lengths = [len(ten.flatten()) for ten in list_t]# dim 61 with size of each layer
     cum_lengths = np.cumsum(list_lengths)
     sorted_idxs = np.argsort(combined_arrays[:cum_lengths[-2]])
     num_top = int(pct_top * len(combined_arrays))
@@ -203,15 +204,49 @@ class fisher_mask_sampling(Strategy):
         #return torch.tensor(log_prob_grads)          
         return log_prob_grads
 
+    def calculate_random_mask(self, mask_size=7014):
+        num_params = sum(p.numel() for p in self.net.parameters())
+        model_shape = []
+        for i in self.net.parameters():
+            model_shape.append(list(i.size()))
+
+        flat_model_shape = []
+        for i in self.net.parameters():
+            flat_model_shape.append(np.prod(list(i.size())))
+        cum_lengths = np.cumsum(flat_model_shape)
+
+        imp_wt_idxs = [[] for i in range(len(model_shape))]
+        for i in range(mask_size):
+            rand_wt = random.randint(0,num_params)
+            prev_length = 0
+            for idx_layer_num, length in enumerate(cum_lengths):
+                if rand_wt < length and length > prev_length: 
+                    try:
+                        distance_into_layer = rand_wt-prev_length
+                        layer_shape = model_shape[idx_layer_num]
+                        idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
+                    except Exception:
+                        print("caught error: ", rand_wt, idx_layer_num, prev_length, length, imp_wt_idxs)
+                        raise
+                    imp_wt_idxs[idx_layer_num].append(idx_tuple)
+                    break
+                prev_length = length
+        return imp_wt_idxs
+
+
+
 
     def query(self, n):
         self.fishIdentity == 0
         sq_grads_start = time.time()
-        sq_grads_expect = self.calculate_gradients()
+        #sq_grads_expect = self.calculate_gradients()
         imp_wt_start = time.time()
         #logging.info('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
-        print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
-        imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
+        #print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
+        #imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
+        num_params = sum(p.numel() for p in self.net.parameters())
+        num_imp_params = num_params * self.pct_top
+        imp_wt_idxs = self.calculate_random_mask(num_imp_params)
 
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt_start = time.time()
