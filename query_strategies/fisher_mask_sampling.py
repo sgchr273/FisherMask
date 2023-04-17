@@ -216,7 +216,7 @@ class fisher_mask_sampling(Strategy):
         cum_lengths = np.cumsum(flat_model_shape)
 
         imp_wt_idxs = [[] for i in range(len(model_shape))]
-        for i in range(mask_size):
+        for i in range(int(mask_size)):
             rand_wt = random.randint(0,num_params)
             prev_length = 0
             for idx_layer_num, length in enumerate(cum_lengths):
