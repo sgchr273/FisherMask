@@ -132,7 +132,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
         # ).sum(-1)
         traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
         chunkSize = min(X.shape[0], chunkSize) # replace 100 by chunkSize argument
-        #print(X.shape[0])
+        print(X.shape[0])
         
         time_for_inner_loop = time.time()
         for c_idx in range(0, X.shape[0], chunkSize):

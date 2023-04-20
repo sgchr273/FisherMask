@@ -214,26 +214,24 @@ class fisher_mask_sampling(Strategy):
         for i in self.net.parameters():
             flat_model_shape.append(np.prod(list(i.size())))
         cum_lengths = np.cumsum(flat_model_shape)
-
+        possible_idxs = range(num_params)
+        rand_wts = np.random.choice(possible_idxs, int(mask_size), replace=False)
         imp_wt_idxs = [[] for i in range(len(model_shape))]
-        for i in range(int(mask_size)):
-            rand_wt = random.randint(0,num_params)
+        for i in rand_wts:
             prev_length = 0
             for idx_layer_num, length in enumerate(cum_lengths):
-                if rand_wt < length and length > prev_length: 
+                if i < length and length > prev_length: 
                     try:
-                        distance_into_layer = rand_wt-prev_length
+                        distance_into_layer = i-prev_length
                         layer_shape = model_shape[idx_layer_num]
                         idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
                     except Exception:
-                        print("caught error: ", rand_wt, idx_layer_num, prev_length, length, imp_wt_idxs)
+                        print("caught error: ", i, idx_layer_num, prev_length, length, imp_wt_idxs)
                         raise
                     imp_wt_idxs[idx_layer_num].append(idx_tuple)
                     break
                 prev_length = length
         return imp_wt_idxs
-
-
 
 
     def query(self, n):
@@ -251,7 +249,7 @@ class fisher_mask_sampling(Strategy):
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt_start = time.time()
         #logging.info('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
-        print('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
+        print('Random calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
         xt = self.log_prob_grads_wrt(imp_wt_idxs)
         xt_end = time.time()
         #logging.info('log_prob_grads_wrt took ', xt_end-xt_start, ' seconds.')
