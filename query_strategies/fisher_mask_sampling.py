@@ -244,7 +244,7 @@ class fisher_mask_sampling(Strategy):
         #imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
         num_params = sum(p.numel() for p in self.net.parameters())
         num_imp_params = num_params * self.pct_top
-        imp_wt_idxs = self.calculate_random_mask(num_imp_params)
+        imp_wt_idxs = self.calculate_random_mask(1280)
 
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt_start = time.time()
@@ -262,7 +262,7 @@ class fisher_mask_sampling(Strategy):
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
             time_long = time.time()
-            batchSize = 3
+            batchSize = 1000
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1]).cuda()
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -288,7 +288,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 3
+        batchSize = 1000
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
