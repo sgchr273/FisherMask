@@ -102,7 +102,7 @@ def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
     print("Beginning GPU ", gpu_id, " at time: ", time.time(), flush=True)
     for c_idx in range(lower_bound, upper_bound, chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
-        xt_chunk = xt_chunk.clone().detach().cuda(gpu_id)
+        xt_chunk = torch.tensor(xt_chunk).clone().detach().cuda(gpu_id)
         currentInv = currentInv.cuda(gpu_id)
         fisher = fisher.cuda(gpu_id)
         innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
@@ -176,11 +176,11 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
         torch.multiprocessing.set_start_method('spawn', force=True)
         tE = Array('d', xt_.shape[0], lock=True)
         traceEst = np.frombuffer(tE.get_obj())
-        
 
-        with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
-            args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-            result = pool.starmap(trace_for_chunk, args)
+        if __name__ == '__main__':
+            with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
+                args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
+                result = pool.starmap(trace_for_chunk, args)
 
 
         time_for_inner_loop_end = time.time()

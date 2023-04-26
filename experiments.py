@@ -350,10 +350,10 @@ def main():
     bait_time = time.time()
     exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
-    with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
-        acc_dict = pickle.load(savefile)
-        acc_dict['BAIT_time'] = bait_time
-        acc_dict['FISH_time'] = fish_time
-        pickle.dump(acc_dict, savefile)
+    #with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
+        #acc_dict = pickle.load(savefile)
+        #acc_dict['BAIT_time'] = bait_time
+        #acc_dict['FISH_time'] = fish_time
+        #pickle.dump(acc_dict, savefile)
 
 main()

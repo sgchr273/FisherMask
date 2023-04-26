@@ -262,7 +262,7 @@ class fisher_mask_sampling(Strategy):
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
             time_long = time.time()
-            batchSize = 1000
+            batchSize = 100
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1]).cuda()
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -288,7 +288,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 1000
+        batchSize = 100
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
