@@ -173,14 +173,15 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
                 dim2=-1
             ).sum(-1).detach().cpu() """
         NUM_GPUS = torch.cuda.device_count()
+        print("Inside select funtion for loop". NUM_GPUS)
         torch.multiprocessing.set_start_method('spawn', force=True)
         tE = Array('d', xt_.shape[0], lock=True)
         traceEst = np.frombuffer(tE.get_obj())
 
-        if __name__ == '__main__':
-            with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
-                args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-                result = pool.starmap(trace_for_chunk, args)
+
+        with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
+            args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
+            result = pool.starmap(trace_for_chunk, args)
 
 
         time_for_inner_loop_end = time.time()

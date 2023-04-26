@@ -277,7 +277,7 @@ class fisher_mask_sampling(Strategy):
                 # print(xt_.size())
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0)#.detach().cpu()
                 if(i%1000==0):
-                    print(i/1000,'/',rounds/1000)
+                    print(i/1000,'/',rounds/1000, flush=True)
                 fisher = fisher + op
                 # xt_ = xt_.cpu()
                 del xt_, op

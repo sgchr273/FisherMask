@@ -123,43 +123,42 @@ def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     if type(X_te) == torch.Tensor: X_te = X_te.numpy()
 
     # round 0 accuracy
-    if __name__ == '__main__': # < -- remove this if to go back to original
-        strategy.train()
+    strategy.train()
+    P = strategy.predict(X_te, Y_te)
+    accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
+    print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
+
+    for rd in range(1, NUM_ROUND+1):
+        save_model(rd, net, opts.savefile)
+        print('Round {}'.format(rd), flush=True)
+        torch.cuda.empty_cache()
+        gc.collect()
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        # query
+        output = strategy.query(NUM_QUERY)
+        q_idxs = output
+        idxs_lb[q_idxs] = True
+
+        # update
+        update_time = time.time()
+        strategy.update(idxs_lb)
+        train_time = time.time()
+        # print('Update took:', train_time - update_time)
+        strategy.train(verbose=False)
+
+        # round accuracy
+        predict_time = time.time()
+        # print('Train took:', predict_time - train_time)
         P = strategy.predict(X_te, Y_te)
+        end_time = time.time()
+        # print('Predict took:', end_time - predict_time)
         accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-        print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
-
-        for rd in range(1, NUM_ROUND+1):
-            save_model(rd, net, opts.savefile)
-            print('Round {}'.format(rd), flush=True)
-            torch.cuda.empty_cache()
-            gc.collect()
-            torch.cuda.empty_cache()
-            gc.collect()
-
-            # query
-            output = strategy.query(NUM_QUERY)
-            q_idxs = output
-            idxs_lb[q_idxs] = True
-
-            # update
-            update_time = time.time()
-            strategy.update(idxs_lb)
-            train_time = time.time()
-            # print('Update took:', train_time - update_time)
-            strategy.train(verbose=False)
-
-            # round accuracy
-            predict_time = time.time()
-            # print('Train took:', predict_time - train_time)
-            P = strategy.predict(X_te, Y_te)
-            end_time = time.time()
-            # print('Predict took:', end_time - predict_time)
-            accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-            save_accuracies(accur, alg, opts.savefile)
-            print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
-            if sum(~strategy.idxs_lb) < opts.nQuery: break
-            if opts.rounds > 0 and rd == (opts.rounds - 1): break
+        save_accuracies(accur, alg, opts.savefile)
+        print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
+        if sum(~strategy.idxs_lb) < opts.nQuery: break
+        if opts.rounds > 0 and rd == (opts.rounds - 1): break
 
 def main():
 
@@ -356,4 +355,5 @@ def main():
         #acc_dict['FISH_time'] = fish_time
         #pickle.dump(acc_dict, savefile)
 
-main()
+if __name__=="__main__":
+    main()
