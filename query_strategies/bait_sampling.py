@@ -102,7 +102,7 @@ def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
     print("Beginning GPU ", gpu_id, " at time: ", time.time(), flush=True)
     for c_idx in range(lower_bound, upper_bound, chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
-        xt_chunk = torch.tensor(xt_chunk).clone().detach().cuda(gpu_id)
+        xt_chunk = torch.tensor(xt_chunk).cuda(gpu_id)
         currentInv = currentInv.cuda(gpu_id)
         fisher = fisher.cuda(gpu_id)
         innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
@@ -112,6 +112,7 @@ def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
             dim1=-2,
             dim2=-1
         ).sum(-1).detach().cpu()
+    del xt_chunk, fisher, currentInv
     print("Finishing GPU ", gpu_id, " at time: ", time.time(), flush=True)
     return
 
@@ -264,7 +265,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
         del indsAll[delInd]
     #second_for_loop_time_end = time.time()
     # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
-    del xt_, innerInv, currentInv
+    del xt_, innerInv, currentInv, tE, traceEst, sharedArr
     torch.cuda.empty_cache()
     gc.collect()
     # print("final part of select takes", time.time()-second_for_loop_time_end)

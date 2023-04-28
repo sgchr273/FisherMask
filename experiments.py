@@ -106,11 +106,12 @@ def load_model(rd,net,filename):
     net.load_state_dict(torch.load("./Save/Models/"+ filename +"/model_" +  str(rd) + ".pt"))
         
 def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
+    rand_mask = calculate_random_mask(net, 1280)
     # set up the specified sampler
     if alg == 'BAIT': # bait sampling
         strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'FISH': # fisher mask based sampling
-        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args, rand_mask)
     else: 
         print('choose a valid acquisition function', flush=True)
         raise ValueError
@@ -159,6 +160,35 @@ def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
         print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
         if sum(~strategy.idxs_lb) < opts.nQuery: break
         if opts.rounds > 0 and rd == (opts.rounds - 1): break
+
+def calculate_random_mask(net, mask_size=7014):
+    num_params = sum(p.numel() for p in net.parameters())
+    model_shape = []
+    for i in net.parameters():
+        model_shape.append(list(i.size()))
+
+    flat_model_shape = []
+    for i in net.parameters():
+        flat_model_shape.append(np.prod(list(i.size())))
+    cum_lengths = np.cumsum(flat_model_shape)
+    possible_idxs = range(num_params)
+    rand_wts = np.random.choice(possible_idxs, int(mask_size), replace=False)
+    imp_wt_idxs = [[] for i in range(len(model_shape))]
+    for i in rand_wts:
+        prev_length = 0
+        for idx_layer_num, length in enumerate(cum_lengths):
+            if i < length and length > prev_length: 
+                try:
+                    distance_into_layer = i-prev_length
+                    layer_shape = model_shape[idx_layer_num]
+                    idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
+                except Exception:
+                    print("caught error: ", i, idx_layer_num, prev_length, length, imp_wt_idxs)
+                    raise
+                imp_wt_idxs[idx_layer_num].append(idx_tuple)
+                break
+            prev_length = length
+    return imp_wt_idxs
 
 def main():
 

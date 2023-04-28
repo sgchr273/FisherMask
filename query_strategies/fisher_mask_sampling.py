@@ -91,8 +91,8 @@ def save_queried_idx(idx,filename):
 
 
 class fisher_mask_sampling(Strategy):
-    def __init__(self, X, Y, idxs_lb, net, handler, args):
-        super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
+    def __init__(self, X, Y, idxs_lb, net, handler, args, rand_mask):
+        super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args, rand_mask)
         self.fishIdentity = args['fishIdentity']
         self.fishInit = args['fishInit']
         self.lamb = args['lamb']
@@ -100,6 +100,7 @@ class fisher_mask_sampling(Strategy):
         self.pct_top = args['pct_top']
         self.savefile = args["savefile"]
         self.chunkSize = args["chunkSize"]
+        self.rand_mask = rand_mask
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -244,7 +245,8 @@ class fisher_mask_sampling(Strategy):
         #imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
         num_params = sum(p.numel() for p in self.net.parameters())
         num_imp_params = num_params * self.pct_top
-        imp_wt_idxs = self.calculate_random_mask(1280)
+        #imp_wt_idxs = self.calculate_random_mask(1280)
+        imp_wt_idxs = self.rand_mask
 
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt_start = time.time()
