@@ -173,7 +173,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
                 dim2=-1
             ).sum(-1).detach().cpu() """
         NUM_GPUS = torch.cuda.device_count()
-        print("Inside select funtion for loop". NUM_GPUS)
+        logging.debug("Inside select funtion for loop" + str(NUM_GPUS))
         torch.multiprocessing.set_start_method('spawn', force=True)
         tE = Array('d', xt_.shape[0], lock=True)
         traceEst = np.frombuffer(tE.get_obj())
