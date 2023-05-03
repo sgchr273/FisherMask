@@ -92,7 +92,7 @@ def save_queried_idx(idx,filename):
 
 class fisher_mask_sampling(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args, rand_mask):
-        super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args, rand_mask)
+        super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
         self.fishIdentity = args['fishIdentity']
         self.fishInit = args['fishInit']
         self.lamb = args['lamb']

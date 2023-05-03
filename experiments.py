@@ -375,7 +375,7 @@ def main():
 
 
     start = time.time()
-    # exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
+    exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
     bait_time = time.time()
     exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
