@@ -99,10 +99,11 @@ def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
     upper_bound = int(xt_.shape[0]/(num_gpus-gpu_id))
     lower_bound = int(upper_bound-(xt_.shape[0]/num_gpus))
     traceEst = np.frombuffer(sharedArr.get_obj(), dtype=np.float64)
-    print("Beginning GPU ", gpu_id, " at time: ", time.time(), flush=True)
+    # print("Beginning GPU ", gpu_id, " at time: ", time.time(), flush=True)
     for c_idx in range(lower_bound, upper_bound, chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
-        xt_chunk = torch.tensor(xt_chunk).cuda(gpu_id)
+        # xt_chunk = torch.tensor(xt_chunk).clone().detach().cuda(gpu_id)
+        xt_chunk = xt_chunk.clone().detach().cuda(gpu_id)
         currentInv = currentInv.cuda(gpu_id)
         fisher = fisher.cuda(gpu_id)
         innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
@@ -113,11 +114,11 @@ def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
             dim2=-1
         ).sum(-1).detach().cpu()
     del xt_chunk, fisher, currentInv
-    print("Finishing GPU ", gpu_id, " at time: ", time.time(), flush=True)
+    # print("Finishing GPU ", gpu_id, " at time: ", time.time(), flush=True)
     return
 
 
-def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=100):
+def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
     '''
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
@@ -236,7 +237,8 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
         indsAll.append(ind)  # adding a new tilde_x to the minibatch being made
         #print(i, ind, traceEst[ind], flush=True)
        
-        xt_ = torch.tensor(X[ind]).unsqueeze(0).cuda()
+        # xt_ = torch.tensor(X[ind]).unsqueeze(0).cuda()
+        xt_ = (X[ind]).unsqueeze(0).cuda()
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
         #time_for_outer_loop = time.time()
@@ -265,7 +267,8 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
         del indsAll[delInd]
     #second_for_loop_time_end = time.time()
     # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
-    del xt_, innerInv, currentInv, tE, traceEst, sharedArr
+    # del xt_, innerInv, currentInv, tE, traceEst, sharedArr
+    del xt_, innerInv, currentInv, tE, traceEst
     torch.cuda.empty_cache()
     gc.collect()
     # print("final part of select takes", time.time()-second_for_loop_time_end)
@@ -307,10 +310,11 @@ class BaitSampling(Strategy):
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
-            batchSize = 1000
+            batchSize = 500
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
             rounds = int(np.ceil(len(self.X) / batchSize))
+            print(torch.cuda.memory_summary(device=None, abbreviated=False))
             for i in range(int(np.ceil(len(self.X) / batchSize))):
                 '''
                 adding individual fisher matrices to compute overall fisher matrix I_U
@@ -326,7 +330,7 @@ class BaitSampling(Strategy):
 
 
         # get fisher only for samples that have been seen before
-        batchSize = 1000 
+        batchSize = 500
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]

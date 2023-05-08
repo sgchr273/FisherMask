@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from copy import deepcopy
 import pdb
 import resnet
-from torchvision.models import resnet18, ResNet18_Weights
+# from torchvision.models import resnet18, ResNet18_Weights
 from torch.distributions.categorical import Categorical
 class Strategy:
     def __init__(self, X, Y, idxs_lb, net, handler, args):

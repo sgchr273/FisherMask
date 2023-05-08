@@ -47,7 +47,7 @@ parser.add_argument('--dummy', help='dummy input for indexing replicates', type=
 parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=50)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
-parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=100)
+parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
 
 
 opts = parser.parse_args()

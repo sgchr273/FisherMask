@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import datasets
 from torch.utils.data import DataLoader
-from torchvision.models import ResNet18_Weights
+# from torchvision.models import ResNet18_Weights
 import time
 from .strategy import Strategy
 import gc
@@ -264,7 +264,7 @@ class fisher_mask_sampling(Strategy):
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
             time_long = time.time()
-            batchSize = 100
+            batchSize = 500
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1]).cuda()
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -290,7 +290,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 100
+        batchSize = 500
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
@@ -323,14 +323,14 @@ class fisher_mask_sampling(Strategy):
         chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         end_for_select = time.time()
-        #print ('Select took', end_for_select - start_for_select, 'seconds')
+        print ('Select took', end_for_select - start_for_select, 'seconds')
         logging.debug("Select took" + str(end_for_select - start_for_select) + "seconds")
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.std(phat[chosen,:], 1)).item())), flush=True)
         end = time.time()
-        print('The rest of the query function took ', end-xt_end, ' seconds.')
+        # print('The rest of the query function took ', end-xt_end, ' seconds.')
         print('Query took ', (imp_wt_start-sq_grads_start) + (xt_start-imp_wt_start) + (xt_end-xt_start) + (end-xt_end))
         return idxs_unlabeled[chosen]
         
