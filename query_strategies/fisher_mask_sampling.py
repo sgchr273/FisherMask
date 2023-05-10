@@ -205,34 +205,34 @@ class fisher_mask_sampling(Strategy):
         #return torch.tensor(log_prob_grads)          
         return log_prob_grads
 
-    def calculate_random_mask(self, mask_size=7014):
-        num_params = sum(p.numel() for p in self.net.parameters())
-        model_shape = []
-        for i in self.net.parameters():
-            model_shape.append(list(i.size()))
+    # def calculate_random_mask(self, mask_size=7014):
+    #     num_params = sum(p.numel() for p in self.net.parameters())
+    #     model_shape = []
+    #     for i in self.net.parameters():
+    #         model_shape.append(list(i.size()))
 
-        flat_model_shape = []
-        for i in self.net.parameters():
-            flat_model_shape.append(np.prod(list(i.size())))
-        cum_lengths = np.cumsum(flat_model_shape)
-        possible_idxs = range(num_params)
-        rand_wts = np.random.choice(possible_idxs, int(mask_size), replace=False)
-        imp_wt_idxs = [[] for i in range(len(model_shape))]
-        for i in rand_wts:
-            prev_length = 0
-            for idx_layer_num, length in enumerate(cum_lengths):
-                if i < length and length > prev_length: 
-                    try:
-                        distance_into_layer = i-prev_length
-                        layer_shape = model_shape[idx_layer_num]
-                        idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
-                    except Exception:
-                        print("caught error: ", i, idx_layer_num, prev_length, length, imp_wt_idxs)
-                        raise
-                    imp_wt_idxs[idx_layer_num].append(idx_tuple)
-                    break
-                prev_length = length
-        return imp_wt_idxs
+    #     flat_model_shape = []
+    #     for i in self.net.parameters():
+    #         flat_model_shape.append(np.prod(list(i.size())))
+    #     cum_lengths = np.cumsum(flat_model_shape)
+    #     possible_idxs = range(num_params)
+    #     rand_wts = np.random.choice(possible_idxs, int(mask_size), replace=False)
+    #     imp_wt_idxs = [[] for i in range(len(model_shape))]
+    #     for i in rand_wts:
+    #         prev_length = 0
+    #         for idx_layer_num, length in enumerate(cum_lengths):
+    #             if i < length and length > prev_length: 
+    #                 try:
+    #                     distance_into_layer = i-prev_length
+    #                     layer_shape = model_shape[idx_layer_num]
+    #                     idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
+    #                 except Exception:
+    #                     print("caught error: ", i, idx_layer_num, prev_length, length, imp_wt_idxs)
+    #                     raise
+    #                 imp_wt_idxs[idx_layer_num].append(idx_tuple)
+    #                 break
+    #             prev_length = length
+    #     return imp_wt_idxs
 
 
     def query(self, n):
@@ -264,7 +264,7 @@ class fisher_mask_sampling(Strategy):
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
             time_long = time.time()
-            batchSize = 500
+            batchSize = 100
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1]).cuda()
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -290,7 +290,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 500
+        batchSize = 100
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]

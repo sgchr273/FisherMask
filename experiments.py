@@ -274,9 +274,16 @@ def main():
 
     # load non-openml dataset
     else:
+        # with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "rb") as savefile:
+        #     data_dict = pickle.load(savefile)
+
         X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
+        # X_tr = data_dict['X_train']
+        # Y_tr = data_dict['Y_train']
+        
         opts.dim = np.shape(X_tr)[1:]
         handler = get_handler(opts.data)
+        # if False:
         if opts.DEBUG:
             X_tr, Y_tr = decrease_dataset(X_tr, Y_tr) # move outside exper function
                                                         # so that BAIT and FISH work on same
@@ -375,8 +382,8 @@ def main():
 
 
     start = time.time()
-    exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
-    bait_time = time.time()
+    # exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
+    # bait_time = time.time()
     exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
     #with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
