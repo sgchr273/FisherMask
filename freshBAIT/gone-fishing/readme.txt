@@ -3,9 +3,7 @@ This code is based on both https://github.com/ej0cl6/deep-active-learning and ht
 python run.py --model resnet --nQuery 1000 --data SVHN --alg bait --nStart 100
 python run.py --model resnet --nQuery 24 --data CIFAR10 --nStart 1 --nEnd 50 --backwardSteps 0 --DEBUG 50 --aug 1 --savefile test
 
+python run.py --model resnet --nQuery 2000 --data CIFAR10 --nStart 1000 --nEnd 25000  --pct_top 0.01 --backwardSteps 0 --savefile 25k_bait_1_gpu --aug 1 --DEBUG 25000 
 which will select 1000 samples at a time from the SVHN dataset using the BAIT algorithm. The resnet will be retrained after every selection, and the program will not terminate until the entire dataset has been labeled.
 
 
-
-
- 
