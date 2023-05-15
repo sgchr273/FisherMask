@@ -291,26 +291,26 @@ if type(X_tr[0]) is not np.ndarray:
     X_tr = X_tr.numpy()
 
 # set up the specified sampler
-if opts.alg == 'rand': # random sampling
-    strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'bait': # bait sampling
+if opts.alg == 'bait': # random sampling
     strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'conf': # confidence-based sampling
-    strategy = LeastConfidence(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'marg': # margin-based sampling
-    strategy = MarginSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'badge': # batch active learning by diverse gradient embeddings
-    strategy = BadgeSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'coreset': # coreset sampling
-    strategy = CoreSet(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'entropy': # entropy-based sampling
-    strategy = EntropySampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'baseline': # badge but with k-DPP sampling instead of k-means++
-    strategy = BaselineSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
-elif opts.alg == 'albl': # active learning by learning
-    albl_list = [LeastConfidence(X_tr, Y_tr, idxs_lb, net, handler, args),
-        CoreSet(X_tr, Y_tr, idxs_lb, net, handler, args)]
-    strategy = ActiveLearningByLearning(X_tr, Y_tr, idxs_lb, net, handler, args, strategy_list=albl_list, delta=0.1)
+# elif opts.alg == 'rand': # bait sampling
+#     strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'conf': # confidence-based sampling
+#     strategy = LeastConfidence(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'marg': # margin-based sampling
+#     strategy = MarginSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'badge': # batch active learning by diverse gradient embeddings
+#     strategy = BadgeSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'coreset': # coreset sampling
+#     strategy = CoreSet(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'entropy': # entropy-based sampling
+#     strategy = EntropySampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'baseline': # badge but with k-DPP sampling instead of k-means++
+#     strategy = BaselineSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+# elif opts.alg == 'albl': # active learning by learning
+#     albl_list = [LeastConfidence(X_tr, Y_tr, idxs_lb, net, handler, args),
+#         CoreSet(X_tr, Y_tr, idxs_lb, net, handler, args)]
+#     strategy = ActiveLearningByLearning(X_tr, Y_tr, idxs_lb, net, handler, args, strategy_list=albl_list, delta=0.1)
 else: 
     print('choose a valid acquisition function', flush=True)
     raise ValueError

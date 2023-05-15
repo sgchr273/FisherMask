@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import datasets
 from torch.utils.data import DataLoader
-from torchvision.models import ResNet18_Weights
+# from torchvision.models import ResNet18_Weights
 import time
 from .strategy import Strategy
 import gc
@@ -12,15 +12,16 @@ import sys
 import pickle
 import os
 import logging
+import random
 
 from .bait_sampling import select
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def calculate_mask(sq_grads_expect, pct_top=0.02):
-    list_t = list(sq_grads_expect.values())
-    combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) 
-    list_lengths = [len(ten.flatten()) for ten in list_t]
+    list_t = list(sq_grads_expect.values())#same dim as model
+    combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) #dim 61 with grad values flattened for each layer
+    list_lengths = [len(ten.flatten()) for ten in list_t]# dim 61 with size of each layer
     cum_lengths = np.cumsum(list_lengths)
     sorted_idxs = np.argsort(combined_arrays[:cum_lengths[-2]])
     num_top = int(pct_top * len(combined_arrays))
@@ -90,7 +91,7 @@ def save_queried_idx(idx,filename):
 
 
 class fisher_mask_sampling(Strategy):
-    def __init__(self, X, Y, idxs_lb, net, handler, args):
+    def __init__(self, X, Y, idxs_lb, net, handler, args, rand_mask):
         super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
         self.fishIdentity = args['fishIdentity']
         self.fishInit = args['fishInit']
@@ -98,6 +99,8 @@ class fisher_mask_sampling(Strategy):
         self.backwardSteps = args['backwardSteps']
         self.pct_top = args['pct_top']
         self.savefile = args["savefile"]
+        self.chunkSize = args["chunkSize"]
+        self.rand_mask = rand_mask
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -202,20 +205,53 @@ class fisher_mask_sampling(Strategy):
         #return torch.tensor(log_prob_grads)          
         return log_prob_grads
 
+    # def calculate_random_mask(self, mask_size=7014):
+    #     num_params = sum(p.numel() for p in self.net.parameters())
+    #     model_shape = []
+    #     for i in self.net.parameters():
+    #         model_shape.append(list(i.size()))
+
+    #     flat_model_shape = []
+    #     for i in self.net.parameters():
+    #         flat_model_shape.append(np.prod(list(i.size())))
+    #     cum_lengths = np.cumsum(flat_model_shape)
+    #     possible_idxs = range(num_params)
+    #     rand_wts = np.random.choice(possible_idxs, int(mask_size), replace=False)
+    #     imp_wt_idxs = [[] for i in range(len(model_shape))]
+    #     for i in rand_wts:
+    #         prev_length = 0
+    #         for idx_layer_num, length in enumerate(cum_lengths):
+    #             if i < length and length > prev_length: 
+    #                 try:
+    #                     distance_into_layer = i-prev_length
+    #                     layer_shape = model_shape[idx_layer_num]
+    #                     idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
+    #                 except Exception:
+    #                     print("caught error: ", i, idx_layer_num, prev_length, length, imp_wt_idxs)
+    #                     raise
+    #                 imp_wt_idxs[idx_layer_num].append(idx_tuple)
+    #                 break
+    #             prev_length = length
+    #     return imp_wt_idxs
+
 
     def query(self, n):
         self.fishIdentity == 0
         sq_grads_start = time.time()
-        sq_grads_expect = self.calculate_gradients()
+        #sq_grads_expect = self.calculate_gradients()
         imp_wt_start = time.time()
         #logging.info('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
-        print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
-        imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
+        #print('calculate_gradients took ', imp_wt_start-sq_grads_start, ' seconds.')
+        #imp_wt_idxs = calculate_mask(sq_grads_expect, pct_top=self.pct_top)
+        num_params = sum(p.numel() for p in self.net.parameters())
+        num_imp_params = num_params * self.pct_top
+        #imp_wt_idxs = self.calculate_random_mask(1280)
+        imp_wt_idxs = self.rand_mask
 
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt_start = time.time()
         #logging.info('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
-        print('calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
+        print('Random calculate_mask took ', xt_start-imp_wt_start, ' seconds.')
         xt = self.log_prob_grads_wrt(imp_wt_idxs)
         xt_end = time.time()
         #logging.info('log_prob_grads_wrt took ', xt_end-xt_start, ' seconds.')
@@ -228,7 +264,7 @@ class fisher_mask_sampling(Strategy):
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
             time_long = time.time()
-            batchSize = 3
+            batchSize = 100
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1]).cuda()
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -243,7 +279,7 @@ class fisher_mask_sampling(Strategy):
                 # print(xt_.size())
                 op = torch.sum(torch.matmul(xt_.transpose(1,2), xt_) / (len(xt)), 0)#.detach().cpu()
                 if(i%1000==0):
-                    print(i/1000,'/',rounds/1000)
+                    print(i/1000,'/',rounds/1000, flush=True)
                 fisher = fisher + op
                 # xt_ = xt_.cpu()
                 del xt_, op
@@ -254,7 +290,7 @@ class fisher_mask_sampling(Strategy):
         # get fisher only for samples that have been seen before
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
         
-        batchSize = 3
+        batchSize = 100
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
@@ -283,17 +319,18 @@ class fisher_mask_sampling(Strategy):
         
         xt = xt[idxs_unlabeled]
         start_for_select = time.time()
-        chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        logging.debug("Inside query, before select")
+        chosen = select(xt, n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         end_for_select = time.time()
-        #print ('Select took', end_for_select - start_for_select, 'seconds')
-        logging.debug('Select took', end_for_select - start_for_select, 'seconds')
+        print ('Select took', end_for_select - start_for_select, 'seconds')
+        logging.debug("Select took" + str(end_for_select - start_for_select) + "seconds")
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.std(phat[chosen,:], 1)).item())), flush=True)
         end = time.time()
-        print('The rest of the query function took ', end-xt_end, ' seconds.')
+        # print('The rest of the query function took ', end-xt_end, ' seconds.')
         print('Query took ', (imp_wt_start-sq_grads_start) + (xt_start-imp_wt_start) + (xt_end-xt_start) + (end-xt_end))
         return idxs_unlabeled[chosen]
         

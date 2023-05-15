@@ -1,0 +1,17 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "args": ["--model", "resnet", "--nQuery", "1200", "--data", "CIFAR10", "--nStart", "1000", "--nEnd", "25000", "--backwardSteps", "0", "--DEBUG", "25000", "--aug" ,"1", "--savefile", "experi", "--alg", "FISH", "--did", "0", "--pct_top", "0.01"],
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

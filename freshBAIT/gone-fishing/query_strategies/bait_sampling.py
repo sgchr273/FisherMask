@@ -25,6 +25,7 @@ import os
 from collections import OrderedDict
 from scipy import stats
 import numpy as np
+import time
 import scipy.sparse as sp
 from itertools import product
 # from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
@@ -123,7 +124,9 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
                 break
 
         indsAll.append(ind)
-        print(i, ind, traceEst[ind], flush=True)
+        # print(i, ind, traceEst[ind], flush=True)
+        if i%500 == 0:
+            print(i)
        
         xt_ = X[ind].unsqueeze(0).cuda()
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
@@ -208,9 +211,12 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.max(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
-        
+        select_start = time.time()
+
         chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
         # breakpoint()
+        select_end = time.time()
+        print('Time taken by select function:', select_end - select_start)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
