@@ -37,10 +37,10 @@ def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
     send_time = time.time()
     xt_chunk = xt_[lower_bound : upper_bound]
     xt_chunk = xt_chunk.cuda(gpu_id)
-    print(F"Sent to {gpu_id} in", time.time() - send_time)
     fisher = fisher.cuda(gpu_id)
     currentInv = currentInv.cuda(gpu_id)
-    
+    print(F"Sent to {gpu_id} in", time.time() - send_time)
+
     innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))    
     innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
     traceEst[lower_bound : upper_bound] = torch.diagonal(
@@ -70,8 +70,9 @@ if __name__ == '__main__':
 
 
     start = time.time()
-    xts = [xt_.clone().detach().cuda(0),
-           xt_.clone().detach().cuda(1)]
+    fishers = [fisher.clone().detach().cuda(0), fisher.clone().detach().cuda(1)]
+    xts = [xt_.clone().detach().cuda(0), xt_.clone().detach().cuda(1)]
+    cInvs = [currentInv.clone().detach().cuda(0), currentInv.clone().detach().cuda(1)]
     # xts = [xt_[:total_len//2].clone().detach().cuda(0),
     #        xt_[total_len//2:].clone().detach().cuda(1)]
     mid = time.time()
@@ -82,15 +83,12 @@ if __name__ == '__main__':
     NUM_GPUS = torch.cuda.device_count()
     traceEst = np.frombuffer(tE.get_obj())
     print("Before pool", traceEst.shape)
-    with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
-        args = [(xts[x], rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        result = pool.starmap(trace_for_chunk, args)
+    for i in range(5):
+        with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
+            args = [(xts[x], rank, chunkSize, NUM_GPUS, cInvs[x], fishers[x], x) for x in range(NUM_GPUS)]
+            # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
+            result = pool.starmap(trace_for_chunk, args)
 
-    with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
-        args = [(xts[x], rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        result = pool.starmap(trace_for_chunk, args)
     
     ## use 1 GPU
     # innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
