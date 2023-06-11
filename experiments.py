@@ -47,7 +47,7 @@ parser.add_argument('--dummy', help='dummy input for indexing replicates', type=
 parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=50)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
-parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=500)
+parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=100)
 
 
 opts = parser.parse_args()
@@ -106,7 +106,7 @@ def load_model(rd,net,filename):
     net.load_state_dict(torch.load("./Save/Models/"+ filename +"/model_" +  str(rd) + ".pt"))
         
 def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
-    rand_mask = calculate_random_mask(net, 1280)
+    rand_mask = calculate_random_mask(net, 4000) #3500
     # set up the specified sampler
     if alg == 'BAIT': # bait sampling
         strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
@@ -382,9 +382,9 @@ def main():
 
 
     start = time.time()
-    exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
+    # exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
     # bait_time = time.time()
-    # exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+    exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
     #with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
         #acc_dict = pickle.load(savefile)

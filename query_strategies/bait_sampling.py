@@ -47,9 +47,10 @@ import logging
 from torch.multiprocessing import Pool, Queue, Manager, Array
 import subprocess
 
-def initpool(arr):
-    global sharedArr
-    sharedArr = arr
+def betterSlice(num_gpus, gpu_id, total_len):
+    upper_bound = int(total_len/(num_gpus-gpu_id))
+    lower_bound = int(upper_bound-(total_len/num_gpus))
+    return slice(lower_bound, upper_bound)
 
 
 # kmeans ++ initialization
@@ -95,30 +96,43 @@ def save_queried_idx(idx,filename):
         pickle.dump(que_idxs, savefile)
         savefile.close()
 
-def trace_for_chunk(xt_, rank, chunkSize, num_gpus, currentInv, fisher, gpu_id):
-    upper_bound = int(xt_.shape[0]/(num_gpus-gpu_id))
-    lower_bound = int(upper_bound-(xt_.shape[0]/num_gpus))
-    t = time.time()
-    traceEst = np.frombuffer(sharedArr.get_obj(), dtype=np.float64)
-    # print("Beginning GPU ", gpu_id, " at time: ", time.time(), flush=True)
-    for c_idx in range(lower_bound, upper_bound, chunkSize):
+def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv,fisher, total_len, gpu_id):
+    # total_len = xt_.shape[0] #* num_gpus
+    # upper_bound = int(total_len/(num_gpus-gpu_id))
+    # lower_bound = int(upper_bound-(total_len/num_gpus))
+    # traceEst = np.frombuffer(sharedArr.get_obj(), dtype=np.float32)
+
+    # print("Inside trace_for_chunk",  chunkSize)
+    
+    print("Beginning GPU ", gpu_id, " at time: ", time.ctime(), flush=True)
+    # xt_chunk = xt_[lower_bound : upper_bound]
+    # queue.put(xt_chunk)
+    # queue.put(fisher)
+    # queue.put(currentInv)
+    print(len(xt_), chunkSize)
+    traceEst = torch.zeros((total_len//num_gpus))
+    for c_idx in range(len(xt_), chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
-        # xt_chunk = torch.tensor(xt_chunk).clone().detach().cuda(gpu_id)
-        xt_chunk = xt_chunk.clone().detach().cuda(gpu_id)
-        currentInv = currentInv.cuda(gpu_id)
+        xt_chunk = xt_chunk.cuda(gpu_id)
         fisher = fisher.cuda(gpu_id)
-        innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
-        # print('fisher: ', fisher, '\n', 'curentinv: ', currentInv, '\n', 'xt_chunk: ', xt_chunk)
-        innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
+        currentInv = currentInv.cuda(gpu_id)
+        # print(F"Sent to {gpu_id} in", time.time() - send_time)
+        # with torch.no_grad():
+        innerInv_time = time.time()
+        innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2)) 
+        
+        # print("InnerInv at GPU", innerInv.get_device(), " took ", time.time()-innerInv_time, "has shape", innerInv.shape)
+        tracest_time = time.time()
         traceEst[c_idx : c_idx + chunkSize] = torch.diagonal(
             xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv,
             dim1=-2,
             dim2=-1
         ).sum(-1).detach().cpu()
-        # print(time.time()-t)
-    del xt_chunk, fisher, currentInv
-    # print("Finishing GPU ", gpu_id, " at time: ", time.time(), flush=True)
-    return
+        # print("traceEst calculated in", time.time() - tracest_time)
+   
+    
+    # print("Finishing GPU ", gpu_id, " at time: ", time.ctime(), flush=True)
+    return traceEst
 
 
 def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
@@ -126,136 +140,68 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
     '''
-    # print(X.shape, fisher.shape, iterates.shape)
     numEmbs = len(X)
     dim = X.shape[-1]
     rank = X.shape[-2]
     indsAll = []
 
-    #start_select = time.time()
     currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
     # what is lamb used for here?
     X = X * np.sqrt(K / (nLabeled + K))
-    #inv_time = time.time()
-    # print("inverse op took ", inv_time - start_select)
-    fisher = fisher.cuda()
-    # print("placing fisher in cuda", time.time() - inv_time)
+    # fisher = fisher.cuda()
     total = 0
-    #total_outer = 0
-    # forward selection
-    for i in range(int((backwardSteps + 1) *  K)):
-        # print("Select function for loop: ", i)
-        '''
-        K corresponds to minibatch size, which is called B in the paper.
-        currently we assume that backwardSteps = 0
-        '''
+    xt_ = X
+    chunkSize = min(X.shape[0], chunkSize)
+    total_len = xt_.shape[0]
+    tE = Array('d', total_len, lock=True)
+    NUM_GPUS = torch.cuda.device_count()
+    start = time.time()
+    fishers = [fisher.clone().detach().cuda(0), fisher.clone().detach().cuda(1)]
+    xts = [X[betterSlice(NUM_GPUS, 0, total_len)].clone().detach().cuda(0), X[betterSlice(NUM_GPUS, 1, total_len)].clone().detach().cuda(1)]
+    cInvs = [currentInv.clone().detach().cuda(0), currentInv.clone().detach().cuda(1)]
+    mid = time.time()
+    print('Random arrays sent to gpus in', mid - start)
 
-        # xt_ = X.cuda()
-        xt_ = X  
+    mid = time.time()
 
-        # innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
-        # innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
-        
-        
-        
-        # traceEst = torch.diagonal(
-        #     xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, 
-        #     dim1=-2, 
-        #     dim2=-1
-        # ).sum(-1)
-        #traceEst = np.zeros(X.shape[0]) #torch.zeros(X.shape[0]).cuda() 
-        chunkSize = min(X.shape[0], chunkSize) # replace 100 by chunkSize argument
-        
-        time_for_inner_loop = time.time()
-        """ for c_idx in range(0, X.shape[0], chunkSize):
-            xt_chunk = xt_[c_idx : c_idx + chunkSize]
-            xt_chunk = torch.tensor(xt_chunk).cuda() #.clone().detach()
-            innerInv = torch.inverse(torch.eye(rank).cuda() + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
-            innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
-            traceEst[c_idx : c_idx + chunkSize] = torch.diagonal(
-                xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv, 
-                dim1=-2, 
-                dim2=-1
-            ).sum(-1).detach().cpu() """
-        NUM_GPUS = torch.cuda.device_count()
-        # logging.debug("Inside select funtion for loop" + str(NUM_GPUS))
-        torch.multiprocessing.set_start_method('spawn', force=True)
-        tE = Array('d', xt_.shape[0], lock=True)
-        traceEst = np.frombuffer(tE.get_obj())
-
-        here1 = time.time()
-
-        with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
-            args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-            result = pool.starmap(trace_for_chunk, args)
-        here2 = time.time()
-        print(here2 - here1)
+    torch.multiprocessing.set_start_method('spawn', force=True)
 
 
-        time_for_inner_loop_end = time.time()
-        #print('inner loop time: ', time_for_inner_loop_end-time_for_inner_loop)
-        total += (time_for_inner_loop_end-time_for_inner_loop)
-        '''
-        def time_chunk(chunkSize):
-            total=0
-            traceEst = np.zeros(xt_.shape[0])
-            chunkSize = min(xt_.shape[0], chunkSize)
-            time_for_inner_loop = time.time()
-            for c_idx in range(0, X.shape[0], chunkSize):
-                xt_chunk = xt_[c_idx : c_idx + chunkSize]
-                xt_chunk = xt_chunk.clone().detach().cuda() #torch.tensor()
-                innerInv = torch.inverse(torch.eye(rank).cuda() + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2))
-                traceEst[c_idx : c_idx + chunkSize] = torch.diagonal(
-                    xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv, 
-                    dim1=-2, 
-                    dim2=-1
-                ).sum(-1).detach().cpu()
-            time_for_inner_loop_end = time.time()
-            total += (time_for_inner_loop_end-time_for_inner_loop)
-            return total
+    here = time.time()
+    with Pool(processes=NUM_GPUS) as pool:
+        # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
+        args = [(xts[x], rank, chunkSize, NUM_GPUS, cInvs[x], fisher[x], x) for x in range(NUM_GPUS)]
+        for i in range(int((backwardSteps + 1) *  K)):
+            xts[0] = X[betterSlice(NUM_GPUS, 0, total_len)].clone().detach().cuda(0)
+            args = [(xts[x], rank, NUM_GPUS, chunkSize, cInvs[x], fishers[x], total_len, x) for x in range(NUM_GPUS)]
+            tE = pool.starmap(trace_for_chunk, args)
+            traceEst = tE[0]
+            for j in range(1,NUM_GPUS):
+                traceEst = torch.cat((traceEst, tE[j]))
+            # xt = xt_.cpu()
+            torch.cuda.empty_cache()
+            gc.collect()
+            torch.cuda.empty_cache()
+            gc.collect()
+            print(len(traceEst))
+            traceEst = traceEst.detach().cpu().numpy()
 
-        Vx^T M^-1 I(θ_L) M^-1 Vx A^-1 formula from page 5 of paper.
-        currentInv corresponds to M^-1
-        fisher corresponds to I(θ_L)
-        xt_ corresponds to Vx^T
-        innerInv corresponds to A^-1
-        '''
+            dist = traceEst - np.min(traceEst) + 1e-10
+            dist = dist / np.sum(dist)
+            sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
+            ind = sampler.rvs(size=1)[0]
+            for j in np.argsort(dist)[::-1]:
+                if j not in indsAll:
+                    ind = j
+                    break
 
-        # xt = xt_
-        # del xt, innerInv
-        #del xt_, innerInv
-        # torch.cuda.empty_cache()
-        # gc.collect()
-        # torch.cuda.empty_cache()
-        # gc.collect()
-
-        # traceEst = traceEst.detach().cpu().numpy() # objective value in eq (5) from the paper
-
-        dist = traceEst - np.min(traceEst) + 1e-10
-        dist = dist / np.sum(dist)
-        sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
-        ind = sampler.rvs(size=1)[0]
-        for j in np.argsort(dist)[::-1]:
-            if j not in indsAll:
-                ind = j
-                break
-
-        indsAll.append(ind)  # adding a new tilde_x to the minibatch being made
-        #print(i, ind, traceEst[ind], flush=True)
-        
-       
-        # xt_ = torch.tensor(X[ind]).unsqueeze(0).cuda()
-        xt_ = (X[ind]).unsqueeze(0).cuda()
-        innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
-        currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
-        #time_for_outer_loop = time.time()
-        #total_outer += time_for_outer_loop - time_for_inner_loop_end
-        # print('xt: ', xt_ ,'\n', 'currentinv: ', currentInv, '\n', 'innerinv: ',  innerInv,'\n', 'fisher: ', fisher)
-
-    # logging.debug("Average time of chunk loop: " + str(total/int((backwardSteps + 1) *  K)))
-    # print("Average time for outer for loop of select function: ", (total_outer/int((backwardSteps + 1) *  K)))
-    # backward pruning
-    #second_for_loop_time = time.time()
+            indsAll.append(ind)
+            xts[0] = X[ind].unsqueeze(0).cuda()
+            innerInv = torch.inverse(torch.eye(rank).cuda(0) + xts[0] @ cInvs[0] @ xts[0].transpose(1, 2)).detach()
+            cInvs[0] = (cInvs[0] - cInvs[0] @ xts[0].transpose(1, 2) @ innerInv @ xts[0] @ cInvs[0]).detach()[0]
+            cInvs[1] = cInvs[0]
+    print('With took,', time.time() - here)
+    
     rounds = len(indsAll) - K
     for i in range(rounds):
 
