@@ -96,7 +96,7 @@ def save_queried_idx(idx,filename):
         pickle.dump(que_idxs, savefile)
         savefile.close()
 
-def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv,fisher, total_len, gpu_id):
+def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_len, gpu_id):
     # total_len = xt_.shape[0] #* num_gpus
     # upper_bound = int(total_len/(num_gpus-gpu_id))
     # lower_bound = int(upper_bound-(total_len/num_gpus))
@@ -155,24 +155,16 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
     total_len = xt_.shape[0]
     tE = Array('d', total_len, lock=True)
     NUM_GPUS = torch.cuda.device_count()
-    start = time.time()
-    fishers = [fisher.clone().detach().cuda(0), fisher.clone().detach().cuda(1)]
-    xts = [X[betterSlice(NUM_GPUS, 0, total_len)].clone().detach().cuda(0), X[betterSlice(NUM_GPUS, 1, total_len)].clone().detach().cuda(1)]
-    cInvs = [currentInv.clone().detach().cuda(0), currentInv.clone().detach().cuda(1)]
-    mid = time.time()
-    print('Random arrays sent to gpus in', mid - start)
-
-    mid = time.time()
-
+    fishers = [fisher.clone().detach().cuda(x) for x in range(NUM_GPUS)]
+    xts = [X[betterSlice(NUM_GPUS, x, total_len)].clone().detach().cuda(x) for x in range(NUM_GPUS)]
     torch.multiprocessing.set_start_method('spawn', force=True)
-
 
     here = time.time()
     with Pool(processes=NUM_GPUS) as pool:
         # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        args = [(xts[x], rank, chunkSize, NUM_GPUS, cInvs[x], fisher[x], x) for x in range(NUM_GPUS)]
+        # args = [(xts[x], rank, chunkSize, NUM_GPUS, cInvs[x], fisher[x], x) for x in range(NUM_GPUS)]
         for i in range(int((backwardSteps + 1) *  K)):
-            xts[0] = X[betterSlice(NUM_GPUS, 0, total_len)].clone().detach().cuda(0)
+            cInvs = [currentInv.clone().detach().cuda(x) for x in range(NUM_GPUS)]
             args = [(xts[x], rank, NUM_GPUS, chunkSize, cInvs[x], fishers[x], total_len, x) for x in range(NUM_GPUS)]
             tE = pool.starmap(trace_for_chunk, args)
             traceEst = tE[0]
@@ -196,10 +188,9 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
                     break
 
             indsAll.append(ind)
-            xts[0] = X[ind].unsqueeze(0).cuda()
-            innerInv = torch.inverse(torch.eye(rank).cuda(0) + xts[0] @ cInvs[0] @ xts[0].transpose(1, 2)).detach()
-            cInvs[0] = (cInvs[0] - cInvs[0] @ xts[0].transpose(1, 2) @ innerInv @ xts[0] @ cInvs[0]).detach()[0]
-            cInvs[1] = cInvs[0]
+            temp_xt = X[ind].unsqueeze(0).cuda()
+            innerInv = torch.inverse(torch.eye(rank).cuda(0) + temp_xt @ cInvs[0] @ temp_xt.transpose(1, 2)).detach()
+            currentInv = (cInvs[0] - cInvs[0] @ temp_xt.transpose(1, 2) @ innerInv @ temp_xt @ cInvs[0]).detach()[0]
     print('With took,', time.time() - here)
     
     rounds = len(indsAll) - K
