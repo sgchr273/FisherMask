@@ -77,7 +77,7 @@ class Strategy:
             if verbose: print(str(epoch) + ' ' + str(attempts) + ' training accuracy: ' + str(accCurrent), flush=True)
             # reset if not converging
             if (epoch % 1000 == 0) and (accCurrent < 0.2) and (self.args['modelType'] != 'linear'):
-                self.clf = self.net.apply(weight_reset)
+                self.clf = self.net.apply(weight_reset).cuda() 
                 optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
             if attempts >= 50 and self.args['modelType'] == 'linear': break 
             #if attempts >= 50 and self.args['modelType'] != 'linear' and len(idxs_train) > 1000:

@@ -104,12 +104,12 @@ def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_le
 
     # print("Inside trace_for_chunk",  chunkSize)
     
-    print("Beginning GPU ", gpu_id, " at time: ", time.ctime(), flush=True)
+    # print("Beginning GPU ", gpu_id, " at time: ", time.ctime(), flush=True)
     # xt_chunk = xt_[lower_bound : upper_bound]
     # queue.put(xt_chunk)
     # queue.put(fisher)
     # queue.put(currentInv)
-    print(len(xt_), chunkSize)
+    # print(len(xt_), chunkSize)
     traceEst = torch.zeros((total_len//num_gpus))
     for c_idx in range(len(xt_), chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
@@ -175,7 +175,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
             gc.collect()
             torch.cuda.empty_cache()
             gc.collect()
-            print(len(traceEst))
+            # print(len(traceEst))
             traceEst = traceEst.detach().cpu().numpy()
 
             dist = traceEst - np.min(traceEst) + 1e-10
@@ -193,7 +193,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
             currentInv = (cInvs[0] - cInvs[0] @ temp_xt.transpose(1, 2) @ innerInv @ temp_xt @ cInvs[0]).detach()[0]
     print('With took,', time.time() - here)
     
-    rounds = len(indsAll) - K
+    rounds = len(indsAll) - K # a positive value for backwardSteps will run the next for loop
     for i in range(rounds):
 
         # select index for removal
