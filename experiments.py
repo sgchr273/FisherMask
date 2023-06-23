@@ -97,7 +97,7 @@ def save_accuracies(new_acc, alg, filename):
         pickle.dump(acc_dict, savefile)
         savefile.close()
 
-def save_model(rd,net,filename):
+def save_model(rd,net,filename): # pass alg as parameter
     if not os.path.exists("./Save/Models/" + filename):
         os.makedirs("./Save/Models/"+filename)
     torch.save(net.state_dict(), "./Save/Models/"+ filename +"/model_" +  str(rd)+ ".pt")
@@ -327,7 +327,8 @@ def main():
     idxs_tmp = np.arange(n_pool)
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
-
+    init_labeled = np.copy(idxs_lb)
+    
     # linear model class
     class linMod(nn.Module):
         def __init__(self, dim=28):
@@ -385,6 +386,24 @@ def main():
     start = time.time()
     exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
     bait_time = time.time()
+
+    # reset variables
+    idxs_lb = init_labeled
+    if opts.model == 'mlp':
+        net = mlpMod(opts.dim, netembSize=opts.nEmb)
+    elif opts.model == 'resnet':
+        net = resnet.ResNet18()
+    elif opts.model == 'vgg':
+        net = vgg.VGG('VGG16')
+    elif opts.model == 'lin':
+        dim = np.prod(list(X_tr.shape[1:]))
+        net = linMod(dim=dim)
+    else: 
+        print('choose a valid model - mlp, resnet, or vgg', flush=True)
+        raise ValueError
+    net.load_state_dict(...) # load the checkpoint for rd 1 of BAIT
+# ----------
+
     exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
     logging.debug("BAIT took" + str(bait_time - start) + "seconds")
