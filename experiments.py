@@ -97,13 +97,13 @@ def save_accuracies(new_acc, alg, filename):
         pickle.dump(acc_dict, savefile)
         savefile.close()
 
-def save_model(rd,net,filename): # pass alg as parameter
+def save_model(rd,net,filename, alg):
     if not os.path.exists("./Save/Models/" + filename):
         os.makedirs("./Save/Models/"+filename)
-    torch.save(net.state_dict(), "./Save/Models/"+ filename +"/model_" +  str(rd)+ ".pt")
+    torch.save(net.state_dict(), "./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd)+ ".pt")
 
-def load_model(rd,net,filename):
-    net.load_state_dict(torch.load("./Save/Models/"+ filename +"/model_" +  str(rd) + ".pt"))
+def load_model(rd,net,filename, alg):
+    net.load_state_dict(torch.load("./Save/Models/"+ filename + f"/{alg}_/model_" +  str(rd) + ".pt"))
         
 def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     rand_mask = calculate_random_mask(net, 1280) #3500, 4000
@@ -130,7 +130,7 @@ def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
 
     for rd in range(1, NUM_ROUND+1):
-        save_model(rd, net, opts.savefile) 
+        save_model(rd, net, opts.savefile, alg) 
         # second exper will overwrite model saved by first exper
         print('Round {}'.format(rd), flush=True)
         torch.cuda.empty_cache()
@@ -384,27 +384,15 @@ def main():
 
 
     start = time.time()
-    exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
+    exper("BAIT", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     bait_time = time.time()
 
     # reset variables
     idxs_lb = init_labeled
-    if opts.model == 'mlp':
-        net = mlpMod(opts.dim, netembSize=opts.nEmb)
-    elif opts.model == 'resnet':
-        net = resnet.ResNet18()
-    elif opts.model == 'vgg':
-        net = vgg.VGG('VGG16')
-    elif opts.model == 'lin':
-        dim = np.prod(list(X_tr.shape[1:]))
-        net = linMod(dim=dim)
-    else: 
-        print('choose a valid model - mlp, resnet, or vgg', flush=True)
-        raise ValueError
-    net.load_state_dict(...) # load the checkpoint for rd 1 of BAIT
-# ----------
+    load_model(1, net, opts.savefile, "BAIT") # load the checkpoint for rd 1 of BAIT
+    # ----------
 
-    exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+    exper("FISH", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
     logging.debug("BAIT took" + str(bait_time - start) + "seconds")
     logging.debug("FISH with random mask took" + str(fish_time - bait_time) + "seconds")
