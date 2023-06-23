@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH --job-name=CIFAR10_Experiment
+#SBATCH --ntasks=1
+#SBATCH --time=1-01:00:00
+#SBATCH --export=all
+#SBATCH --out=Foundry-%j.out
+#SBATCH -p cuda
+#SBATCH --mem-per-cpu=60000
+#SBATCH --mail-type=begin,end,fail,requeue
+#SBATCH --nodes=1                # node count
+#SBATCH --gres=gpu:4           # number of gpus per node
+
+python test_2.py

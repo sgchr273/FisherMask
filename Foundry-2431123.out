@@ -1,0 +1,33 @@
+Files already downloaded and verified
+Files already downloaded and verified
+number of labeled pool: 1000
+number of unlabeled pool: 24000
+number of testing pool: 10000
+CIFAR10
+BaitSampling
+Traceback (most recent call last):
+  File "/home/sgchr/active_nn/experiments.py", line 396, in <module>
+    main()
+  File "/home/sgchr/active_nn/experiments.py", line 385, in main
+    exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
+  File "/home/sgchr/active_nn/experiments.py", line 127, in exper
+    strategy.train()
+  File "/home/sgchr/active_nn/query_strategies/strategy.py", line 71, in train
+    accCurrent, lossCurrent = self._train(epoch, loader_tr, optimizer)
+  File "/home/sgchr/active_nn/query_strategies/strategy.py", line 37, in _train
+    out, e1 = self.clf(x)
+  File "/home/sgchr/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1194, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/sgchr/active_nn/resnet.py", line 91, in forward
+    out = self.layer1(out)
+  File "/home/sgchr/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1194, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/sgchr/.local/lib/python3.10/site-packages/torch/nn/modules/container.py", line 204, in forward
+    input = module(input)
+  File "/home/sgchr/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1194, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/home/sgchr/active_nn/resnet.py", line 34, in forward
+    out = F.relu(self.bn1(self.conv1(x)))
+  File "/home/sgchr/.local/lib/python3.10/site-packages/torch/nn/functional.py", line 1457, in relu
+    result = torch.relu(input)
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 20.00 MiB (GPU 0; 31.75 GiB total capacity; 68.22 MiB already allocated; 9.00 MiB free; 84.00 MiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF

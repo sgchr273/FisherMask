@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/sgchr/active_nn/experiments.py", line 396, in <module>
+    main()
+  File "/home/sgchr/active_nn/experiments.py", line 277, in main
+    with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "rb") as savefile:
+FileNotFoundError: [Errno 2] No such file or directory: './Save/Queried_idxs/dataset_exper25k_stdbait.p'

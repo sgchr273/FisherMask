@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --job-name=CIFAR10_Experiment
+#SBATCH --time=3-00:00:00
+#SBATCH --export=all
+#SBATCH --ntasks=1
+#SBATCH --out=Foundry-%j.out
+#SBATCH -p cuda
+#SBATCH --mem-per-cpu=35000
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:1
+#SBATCH --mail-type=begin,end,fail,requeue
+
+for i in 1000 5000
+do
+        for j in 50 200 500 1000
+	do
+                nQ=$(((i-200)/5))
+                python  experiments.py --model resnet --nQuery $nQ --data CIFAR10 --nStart 200 --nEnd $i --chunkSize $j --aug 1 --pct_top .01 --backwardSteps 0 --DEBUG $i --savefile "exper${i}_chunk${j}"
+        done
+done

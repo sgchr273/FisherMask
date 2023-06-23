@@ -1,0 +1,4 @@
+  File "/home/sgchr/active_nn/experiments.py", line 280
+    X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
+                                                              ^
+IndentationError: unindent does not match any outer indentation level

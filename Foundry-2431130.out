@@ -1,0 +1,352 @@
+Files already downloaded and verified
+Files already downloaded and verified
+number of labeled pool: 1000
+number of unlabeled pool: 24000
+number of testing pool: 10000
+CIFAR10
+BaitSampling
+2 0 training accuracy: 0.102
+3 0 training accuracy: 0.169
+4 0 training accuracy: 0.224
+5 0 training accuracy: 0.227
+6 0 training accuracy: 0.27
+7 0 training accuracy: 0.276
+8 0 training accuracy: 0.293
+9 0 training accuracy: 0.316
+10 0 training accuracy: 0.321
+11 0 training accuracy: 0.338
+12 0 training accuracy: 0.359
+13 0 training accuracy: 0.365
+14 0 training accuracy: 0.384
+15 1 training accuracy: 0.379
+16 2 training accuracy: 0.384
+17 0 training accuracy: 0.403
+18 0 training accuracy: 0.411
+19 0 training accuracy: 0.419
+20 0 training accuracy: 0.421
+21 0 training accuracy: 0.444
+22 0 training accuracy: 0.461
+23 1 training accuracy: 0.46
+24 2 training accuracy: 0.453
+25 0 training accuracy: 0.469
+26 1 training accuracy: 0.469
+27 0 training accuracy: 0.492
+28 1 training accuracy: 0.487
+29 0 training accuracy: 0.516
+30 0 training accuracy: 0.534
+31 1 training accuracy: 0.514
+32 2 training accuracy: 0.53
+33 3 training accuracy: 0.533
+34 0 training accuracy: 0.537
+35 0 training accuracy: 0.549
+36 0 training accuracy: 0.561
+37 1 training accuracy: 0.556
+38 2 training accuracy: 0.561
+39 0 training accuracy: 0.562
+40 0 training accuracy: 0.589
+41 1 training accuracy: 0.57
+42 0 training accuracy: 0.601
+43 1 training accuracy: 0.594
+44 2 training accuracy: 0.597
+45 0 training accuracy: 0.605
+46 0 training accuracy: 0.636
+47 1 training accuracy: 0.634
+48 0 training accuracy: 0.638
+49 1 training accuracy: 0.635
+50 2 training accuracy: 0.632
+51 3 training accuracy: 0.634
+52 0 training accuracy: 0.659
+53 0 training accuracy: 0.662
+54 0 training accuracy: 0.663
+55 0 training accuracy: 0.677
+56 0 training accuracy: 0.679
+57 1 training accuracy: 0.675
+58 0 training accuracy: 0.683
+59 0 training accuracy: 0.701
+60 0 training accuracy: 0.703
+61 1 training accuracy: 0.68
+62 0 training accuracy: 0.71
+63 1 training accuracy: 0.704
+64 0 training accuracy: 0.725
+65 0 training accuracy: 0.739
+66 0 training accuracy: 0.743
+67 1 training accuracy: 0.733
+68 0 training accuracy: 0.746
+69 0 training accuracy: 0.749
+70 0 training accuracy: 0.75
+71 1 training accuracy: 0.734
+72 0 training accuracy: 0.76
+73 1 training accuracy: 0.748
+74 0 training accuracy: 0.778
+75 1 training accuracy: 0.769
+76 2 training accuracy: 0.774
+77 0 training accuracy: 0.805
+78 1 training accuracy: 0.797
+79 2 training accuracy: 0.783
+80 0 training accuracy: 0.812
+81 1 training accuracy: 0.785
+82 2 training accuracy: 0.811
+83 0 training accuracy: 0.82
+84 0 training accuracy: 0.828
+85 0 training accuracy: 0.833
+86 1 training accuracy: 0.81
+87 0 training accuracy: 0.834
+88 0 training accuracy: 0.841
+89 0 training accuracy: 0.846
+90 0 training accuracy: 0.848
+91 1 training accuracy: 0.848
+92 0 training accuracy: 0.853
+93 0 training accuracy: 0.854
+94 1 training accuracy: 0.84
+95 0 training accuracy: 0.869
+96 1 training accuracy: 0.857
+97 0 training accuracy: 0.893
+98 1 training accuracy: 0.876
+99 2 training accuracy: 0.871
+100 3 training accuracy: 0.875
+101 4 training accuracy: 0.89
+102 0 training accuracy: 0.896
+103 1 training accuracy: 0.895
+104 0 training accuracy: 0.905
+105 1 training accuracy: 0.892
+106 2 training accuracy: 0.902
+107 3 training accuracy: 0.888
+108 4 training accuracy: 0.897
+109 5 training accuracy: 0.903
+110 6 training accuracy: 0.892
+111 7 training accuracy: 0.903
+112 0 training accuracy: 0.92
+113 1 training accuracy: 0.906
+114 2 training accuracy: 0.906
+115 3 training accuracy: 0.909
+116 4 training accuracy: 0.909
+117 0 training accuracy: 0.922
+118 1 training accuracy: 0.922
+119 2 training accuracy: 0.907
+120 0 training accuracy: 0.932
+121 0 training accuracy: 0.942
+122 1 training accuracy: 0.938
+123 2 training accuracy: 0.931
+124 3 training accuracy: 0.942
+125 4 training accuracy: 0.938
+126 5 training accuracy: 0.928
+127 0 training accuracy: 0.943
+128 1 training accuracy: 0.933
+129 2 training accuracy: 0.94
+130 3 training accuracy: 0.939
+131 0 training accuracy: 0.952
+132 1 training accuracy: 0.938
+133 2 training accuracy: 0.948
+134 0 training accuracy: 0.955
+135 1 training accuracy: 0.95
+136 2 training accuracy: 0.947
+137 3 training accuracy: 0.95
+138 4 training accuracy: 0.955
+139 0 training accuracy: 0.964
+140 1 training accuracy: 0.957
+141 2 training accuracy: 0.952
+142 3 training accuracy: 0.956
+143 4 training accuracy: 0.952
+144 5 training accuracy: 0.964
+145 6 training accuracy: 0.958
+146 0 training accuracy: 0.969
+147 1 training accuracy: 0.959
+148 2 training accuracy: 0.966
+149 0 training accuracy: 0.976
+150 1 training accuracy: 0.964
+151 2 training accuracy: 0.965
+152 3 training accuracy: 0.96
+153 4 training accuracy: 0.96
+154 5 training accuracy: 0.976
+155 6 training accuracy: 0.97
+156 7 training accuracy: 0.966
+157 8 training accuracy: 0.97
+158 9 training accuracy: 0.97
+159 10 training accuracy: 0.976
+160 0 training accuracy: 0.979
+161 1 training accuracy: 0.972
+162 2 training accuracy: 0.96
+163 3 training accuracy: 0.956
+164 4 training accuracy: 0.966
+165 5 training accuracy: 0.957
+166 6 training accuracy: 0.968
+167 7 training accuracy: 0.976
+168 8 training accuracy: 0.97
+169 9 training accuracy: 0.968
+170 10 training accuracy: 0.971
+171 11 training accuracy: 0.968
+172 12 training accuracy: 0.972
+173 0 training accuracy: 0.98
+174 1 training accuracy: 0.979
+175 2 training accuracy: 0.98
+176 3 training accuracy: 0.974
+177 0 training accuracy: 0.983
+178 0 training accuracy: 0.985
+179 1 training accuracy: 0.977
+180 2 training accuracy: 0.962
+181 3 training accuracy: 0.982
+182 4 training accuracy: 0.973
+183 5 training accuracy: 0.975
+184 6 training accuracy: 0.978
+185 7 training accuracy: 0.963
+186 8 training accuracy: 0.978
+187 9 training accuracy: 0.979
+188 10 training accuracy: 0.983
+189 0 training accuracy: 0.986
+190 1 training accuracy: 0.979
+191 2 training accuracy: 0.979
+192 3 training accuracy: 0.976
+193 4 training accuracy: 0.979
+194 5 training accuracy: 0.981
+195 6 training accuracy: 0.981
+196 7 training accuracy: 0.976
+197 8 training accuracy: 0.983
+198 0 training accuracy: 0.99
+1000	testing accuracy 0.4321
+Round 1
+getting fisher matrix ...
+|===========================================================================|
+|                  PyTorch CUDA memory summary, device ID 0                 |
+|---------------------------------------------------------------------------|
+|            CUDA OOMs: 0            |        cudaMalloc retries: 0         |
+|===========================================================================|
+|        Metric         | Cur Usage  | Peak Usage | Tot Alloc  | Tot Freed  |
+|---------------------------------------------------------------------------|
+| Allocated memory      |    5532 KB |  170342 KB |    1618 GB |    1618 GB |
+|       from large pool |       0 KB |  159232 KB |    1533 GB |    1533 GB |
+|       from small pool |    5532 KB |   22389 KB |      85 GB |      85 GB |
+|---------------------------------------------------------------------------|
+| Active memory         |    5532 KB |  170342 KB |    1618 GB |    1618 GB |
+|       from large pool |       0 KB |  159232 KB |    1533 GB |    1533 GB |
+|       from small pool |    5532 KB |   22389 KB |      85 GB |      85 GB |
+|---------------------------------------------------------------------------|
+| GPU reserved memory   |   51200 KB |  243712 KB |  286720 KB |  235520 KB |
+|       from large pool |   40960 KB |  219136 KB |  260096 KB |  219136 KB |
+|       from small pool |   10240 KB |   24576 KB |   26624 KB |   16384 KB |
+|---------------------------------------------------------------------------|
+| Non-releasable memory |    2660 KB |   54339 KB |    1834 GB |    1834 GB |
+|       from large pool |       0 KB |   51712 KB |    1739 GB |    1739 GB |
+|       from small pool |    2660 KB |    5593 KB |      94 GB |      94 GB |
+|---------------------------------------------------------------------------|
+| Allocations           |     182    |     390    |     823 K  |     823 K  |
+|       from large pool |       0    |      32    |     309 K  |     309 K  |
+|       from small pool |     182    |     361    |     513 K  |     513 K  |
+|---------------------------------------------------------------------------|
+| Active allocs         |     182    |     390    |     823 K  |     823 K  |
+|       from large pool |       0    |      32    |     309 K  |     309 K  |
+|       from small pool |     182    |     361    |     513 K  |     513 K  |
+|---------------------------------------------------------------------------|
+| GPU reserved segments |       7    |      21    |      24    |      17    |
+|       from large pool |       2    |       9    |      11    |       9    |
+|       from small pool |       5    |      12    |      13    |       8    |
+|---------------------------------------------------------------------------|
+| Non-releasable allocs |       9    |      16    |  427193    |  427184    |
+|       from large pool |       0    |       8    |  173390    |  173390    |
+|       from small pool |       9    |      14    |  253803    |  253794    |
+|---------------------------------------------------------------------------|
+| Oversize allocations  |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize GPU segments |       0    |       0    |       0    |       0    |
+|===========================================================================|
+
+all probs: 0.7928981184959412 0.0008038770174607635 0.2534511387348175
+[W CudaIPCTypes.cpp:95] Producer process tried to deallocate over 1000 memory blocks referred by consumer processes. Deallocation might be significantly slowed down. We assume it will never going to be the case, but if it is, please file but to https://github.com/pytorch/pytorch
+selected probs: 0.47721409797668457 0.0019781209994107485 0.16294920444488525
+3000	testing accuracy 0.528
+Round 2
+getting fisher matrix ...
+|===========================================================================|
+|                  PyTorch CUDA memory summary, device ID 0                 |
+|---------------------------------------------------------------------------|
+|            CUDA OOMs: 0            |        cudaMalloc retries: 0         |
+|===========================================================================|
+|        Metric         | Cur Usage  | Peak Usage | Tot Alloc  | Tot Freed  |
+|---------------------------------------------------------------------------|
+| Allocated memory      |   10392 MB |   10553 MB |    7192 GB |    7182 GB |
+|       from large pool |   10387 MB |   10543 MB |    6834 GB |    6823 GB |
+|       from small pool |       5 MB |      24 MB |     358 GB |     358 GB |
+|---------------------------------------------------------------------------|
+| Active memory         |   10392 MB |   10553 MB |    7192 GB |    7182 GB |
+|       from large pool |   10387 MB |   10543 MB |    6834 GB |    6823 GB |
+|       from small pool |       5 MB |      24 MB |     358 GB |     358 GB |
+|---------------------------------------------------------------------------|
+| GPU reserved memory   |   11130 MB |   11322 MB |  338372 MB |  327242 MB |
+|       from large pool |   11120 MB |   11294 MB |  338322 MB |  327202 MB |
+|       from small pool |      10 MB |      28 MB |      50 MB |      40 MB |
+|---------------------------------------------------------------------------|
+| Non-releasable memory |  732260 KB |    1563 MB |    7526 GB |    7526 GB |
+|       from large pool |  729600 KB |    1561 MB |    7131 GB |    7131 GB |
+|       from small pool |    2660 KB |       5 MB |     394 GB |     394 GB |
+|---------------------------------------------------------------------------|
+| Allocations           |    1844    |    2052    |    3679 K  |    3677 K  |
+|       from large pool |    1662    |    1694    |    1219 K  |    1217 K  |
+|       from small pool |     182    |     371    |    2459 K  |    2459 K  |
+|---------------------------------------------------------------------------|
+| Active allocs         |    1844    |    2052    |    3679 K  |    3677 K  |
+|       from large pool |    1662    |    1694    |    1219 K  |    1217 K  |
+|       from small pool |     182    |     371    |    2459 K  |    2459 K  |
+|---------------------------------------------------------------------------|
+| GPU reserved segments |     561    |     577    |     911    |     350    |
+|       from large pool |     556    |     563    |     886    |     330    |
+|       from small pool |       5    |      14    |      25    |      20    |
+|---------------------------------------------------------------------------|
+| Non-releasable allocs |     564    |     572    |    1991 K  |    1990 K  |
+|       from large pool |     555    |     563    |     753 K  |     753 K  |
+|       from small pool |       9    |      15    |    1237 K  |    1237 K  |
+|---------------------------------------------------------------------------|
+| Oversize allocations  |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize GPU segments |       0    |       0    |       0    |       0    |
+|===========================================================================|
+
+all probs: 0.8719411492347717 4.1852123104035854e-05 0.27837270498275757
+selected probs: 0.555665910243988 0.00016262783901765943 0.19110295176506042
+5000	testing accuracy 0.6459
+Round 3
+getting fisher matrix ...
+|===========================================================================|
+|                  PyTorch CUDA memory summary, device ID 0                 |
+|---------------------------------------------------------------------------|
+|            CUDA OOMs: 0            |        cudaMalloc retries: 0         |
+|===========================================================================|
+|        Metric         | Cur Usage  | Peak Usage | Tot Alloc  | Tot Freed  |
+|---------------------------------------------------------------------------|
+| Allocated memory      |   20605 MB |   20766 MB |   18116 GB |   18096 GB |
+|       from large pool |   20600 MB |   20755 MB |   17217 GB |   17197 GB |
+|       from small pool |       5 MB |      24 MB |     898 GB |     898 GB |
+|---------------------------------------------------------------------------|
+| Active memory         |   20605 MB |   20766 MB |   18116 GB |   18096 GB |
+|       from large pool |   20600 MB |   20755 MB |   17217 GB |   17197 GB |
+|       from small pool |       5 MB |      24 MB |     898 GB |     898 GB |
+|---------------------------------------------------------------------------|
+| GPU reserved memory   |   22030 MB |   22198 MB |  699862 MB |  677832 MB |
+|       from large pool |   22020 MB |   22174 MB |  699792 MB |  677772 MB |
+|       from small pool |      10 MB |      28 MB |      70 MB |      60 MB |
+|---------------------------------------------------------------------------|
+| Non-releasable memory |    1382 MB |    1563 MB |   18240 GB |   18238 GB |
+|       from large pool |    1380 MB |    1561 MB |   17248 GB |   17247 GB |
+|       from small pool |       2 MB |       5 MB |     991 GB |     991 GB |
+|---------------------------------------------------------------------------|
+| Allocations           |    3478    |    3686    |    9471 K  |    9468 K  |
+|       from large pool |    3296    |    3328    |    2981 K  |    2978 K  |
+|       from small pool |     182    |     390    |    6490 K  |    6490 K  |
+|---------------------------------------------------------------------------|
+| Active allocs         |    3478    |    3686    |    9471 K  |    9468 K  |
+|       from large pool |    3296    |    3328    |    2981 K  |    2978 K  |
+|       from small pool |     182    |     390    |    6490 K  |    6490 K  |
+|---------------------------------------------------------------------------|
+| GPU reserved segments |    1106    |    1119    |    1700    |     594    |
+|       from large pool |    1101    |    1107    |    1665    |     564    |
+|       from small pool |       5    |      14    |      35    |      30    |
+|---------------------------------------------------------------------------|
+| Non-releasable allocs |    1108    |    1115    |    4960 K  |    4959 K  |
+|       from large pool |    1099    |    1107    |    1660 K  |    1658 K  |
+|       from small pool |       9    |      15    |    3300 K  |    3300 K  |
+|---------------------------------------------------------------------------|
+| Oversize allocations  |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize GPU segments |       0    |       0    |       0    |       0    |
+|===========================================================================|
+
+all probs: 0.9080633521080017 5.4863271543581504e-06 0.28921961784362793
+slurmstepd-cuda-15-27: error: *** JOB 2431130 ON cuda-15-27 CANCELLED AT 2023-05-12T12:18:17 ***
