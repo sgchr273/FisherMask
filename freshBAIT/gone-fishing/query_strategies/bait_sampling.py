@@ -24,6 +24,7 @@ import torch.nn as nn
 from collections import OrderedDict
 from scipy import stats
 import numpy as np
+import time
 import scipy.sparse as sp
 from itertools import product
 import os
@@ -161,33 +162,33 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
     print("Before pool", traceEst.shape)
 
 
-    here = time.time()
-    with Pool(processes=NUM_GPUS, initializer=initpool, initargs=(tE,)) as pool:
-        # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        args = [(xts[x], rank, chunkSize, NUM_GPUS, cInvs[x], fisher[x], x) for x in range(NUM_GPUS)]
-        for i in range(int((backwardSteps + 1) *  K)):
-            result = pool.starmap(trace_for_chunk, args)
-            if i%500 == 0:
-                print('Iteration number:', i)
-        
-            # print('With took', time.time()- here)   
-            dist = traceEst - np.min(traceEst) + 1e-10
-            dist = dist / np.sum(dist)
-            sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
-            ind = sampler.rvs(size=1)[0]
-            for j in np.argsort(dist)[::-1]:
-                if j not in indsAll:
-                    ind = j
-                    break
+        xt = xt_.cpu()
+        del xt, innerInv
+        torch.cuda.empty_cache()
+        gc.collect()
+        torch.cuda.empty_cache()
+        gc.collect()
 
-            indsAll.append(ind)
-            xt_ = (X[ind]).unsqueeze(0).cuda()
-            innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
-            currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
-    
- 
-    rounds = len(indsAll) - K
-    for i in range(rounds):
+        traceEst = traceEst.detach().cpu().numpy()
+
+        dist = traceEst - np.min(traceEst) + 1e-10
+        dist = dist / np.sum(dist)
+        sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
+        ind = sampler.rvs(size=1)[0]
+        for j in np.argsort(dist)[::-1]:
+            if j not in indsAll:
+                ind = j
+                break
+
+        indsAll.append(ind)
+        print(i, ind, traceEst[ind], flush=True)
+       
+        xt_ = X[ind].unsqueeze(0).cuda()
+        innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
+        currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
+
+    # backward pruning
+    for i in range(len(indsAll) - K):
 
         # select index for removal
         xt_ = torch.tensor(X[indsAll]).cuda()
@@ -289,10 +290,9 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.max(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
-        start_time = time.time()
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
-        end_time = time.time()
-        print('Time taken by select using 2 gpus:', end_time - start_time)
+        
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+        # breakpoint()
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +

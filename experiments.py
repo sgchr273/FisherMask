@@ -47,15 +47,15 @@ parser.add_argument('--dummy', help='dummy input for indexing replicates', type=
 parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=50)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
-parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=100)
-# parser.add_argument('--random_mask_size', help='for random mask experiment', type=int, default=1280)
+parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
+
 
 opts = parser.parse_args()
 NUM_INIT_LB = opts.nStart
 NUM_QUERY = opts.nQuery
 NUM_ROUND = int((opts.nEnd - NUM_INIT_LB)/ opts.nQuery)
 DATA_NAME = opts.data
-logging.basicConfig(level=logging.DEBUG, filename=opts.savefile + '.log')#, filemode='w', format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, filename=opts.savefile + '.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 
 def decrease_dataset(X_tr, Y_tr):
@@ -97,16 +97,16 @@ def save_accuracies(new_acc, alg, filename):
         pickle.dump(acc_dict, savefile)
         savefile.close()
 
-def save_model(rd,net,filename):
+def save_model(rd,net,filename, alg):
     if not os.path.exists("./Save/Models/" + filename):
         os.makedirs("./Save/Models/"+filename)
-    torch.save(net.state_dict(), "./Save/Models/"+ filename +"/model_" +  str(rd)+ ".pt")
+    torch.save(net.state_dict(), "./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd)+ ".pt")
 
-def load_model(rd,net,filename):
-    net.load_state_dict(torch.load("./Save/Models/"+ filename +"/model_" +  str(rd) + ".pt"))
+def load_model(rd,net,filename, alg):
+    net.load_state_dict(torch.load("./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd) + ".pt"))
         
 def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
-    rand_mask = calculate_random_mask(net, 1280) #3500, 4000
+    rand_mask = calculate_random_mask(net, 1280)
     # set up the specified sampler
     if alg == 'BAIT': # bait sampling
         strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
@@ -130,8 +130,7 @@ def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
 
     for rd in range(1, NUM_ROUND+1):
-        save_model(rd, net, opts.savefile) 
-        # second exper will overwrite model saved by first exper
+        save_model(rd, net, opts.savefile)
         print('Round {}'.format(rd), flush=True)
         torch.cuda.empty_cache()
         gc.collect()
@@ -327,7 +326,8 @@ def main():
     idxs_tmp = np.arange(n_pool)
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
-
+    init_labeled = np.copy(idxs_lb)
+    
     # linear model class
     class linMod(nn.Module):
         def __init__(self, dim=28):
@@ -385,7 +385,16 @@ def main():
     start = time.time()
     # exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
     bait_time = time.time()
-    exper("FISH",X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+
+    exper("BAIT", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+    bait_time = time.time()
+
+    # reset variables
+    idxs_lb = init_labeled
+    load_model(1, net, opts.savefile, "BAIT") # load the checkpoint for rd 1 of BAIT
+    # ----------
+
+    exper("FISH", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
     logging.debug("BAIT took" + str(bait_time - start) + "seconds")
     logging.debug("FISH with random mask took" + str(fish_time - bait_time) + "seconds")
@@ -398,4 +407,5 @@ def main():
 
 if __name__=="__main__":
     main()
+    
     
