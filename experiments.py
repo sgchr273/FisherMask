@@ -103,7 +103,7 @@ def save_model(rd,net,filename, alg):
     torch.save(net.state_dict(), "./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd)+ ".pt")
 
 def load_model(rd,net,filename, alg):
-    net.load_state_dict(torch.load("./Save/Models/"+ filename + f"/{alg}_/model_" +  str(rd) + ".pt"))
+    net.load_state_dict(torch.load("./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd) + ".pt"))
         
 def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     rand_mask = calculate_random_mask(net, 1280) #3500, 4000
