@@ -82,6 +82,10 @@ def getUse():
 
 
 def save_queried_idx(idx,filename):
+    '''
+    ideally we should have different files for different algos,
+    can do this by passing alg string to this function
+    '''
     try:
         savefile = open("./Save/Queried_idxs/bait_queried_idxs_"+ filename+'.p', "br")
         que_idxs = pickle.load(savefile)
@@ -95,6 +99,23 @@ def save_queried_idx(idx,filename):
         que_idxs.append(idx)
         pickle.dump(que_idxs, savefile)
         savefile.close()
+
+
+def save_dist_stats(stats_list,filename):
+    try:
+        savefile = open("./Save/Queried_idxs/bait_dist_"+ filename+'.p', "br")
+        tE_stats = pickle.load(savefile)
+        savefile.close()
+    except:
+        tE_stats = []
+    finally:
+        if not os.path.exists("./Save/Queried_idxs"):
+            os.makedirs("./Save/Queried_idxs")
+        savefile = open("./Save/Queried_idxs/bait_dist_"+ filename+'.p', "bw")
+        tE_stats.append(stats_list)
+        pickle.dump(tE_stats, savefile)
+        savefile.close()
+
 
 def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_len, gpu_id):
     # total_len = xt_.shape[0] #* num_gpus
@@ -135,7 +156,7 @@ def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_le
     return traceEst
 
 
-def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
+def select(X, K, fisher, iterates, savefile, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
     '''
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
@@ -153,12 +174,12 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
     xt_ = X
     chunkSize = min(X.shape[0], chunkSize)
     total_len = xt_.shape[0]
-    tE = Array('d', total_len, lock=True)
+    # tE = Array('d', total_len, lock=True)
     NUM_GPUS = torch.cuda.device_count()
     fishers = [fisher.clone().detach().cuda(x) for x in range(NUM_GPUS)]
     xts = [X[betterSlice(NUM_GPUS, x, total_len)].clone().detach().cuda(x) for x in range(NUM_GPUS)]
     torch.multiprocessing.set_start_method('spawn', force=True)
-
+    distStats = []
     here = time.time()
     with Pool(processes=NUM_GPUS) as pool:
         # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
@@ -180,6 +201,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
 
             dist = traceEst - np.min(traceEst) + 1e-10
             dist = dist / np.sum(dist)
+            distStats.append([torch.min(dist), torch.max(dist), torch.std(dist)])
             sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
             ind = sampler.rvs(size=1)[0]
             for j in np.argsort(dist)[::-1]:
@@ -214,6 +236,7 @@ def select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0, chunkSiz
     # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
     # del xt_, innerInv, currentInv, tE, traceEst, sharedArr
     del xt_, innerInv, currentInv, tE, traceEst
+    save_dist_stats(distStats, savefile)
     torch.cuda.empty_cache()
     gc.collect()
     # print("final part of select takes", time.time()-second_for_loop_time_end)
@@ -297,7 +320,7 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         start_time = time.time()
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         end_time = time.time()
         print('Time taken by select using 2 gpus:', end_time - start_time)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
