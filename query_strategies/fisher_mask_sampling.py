@@ -101,6 +101,7 @@ class fisher_mask_sampling(Strategy):
         self.savefile = args["savefile"]
         self.chunkSize = args["chunkSize"]
         self.rand_mask = rand_mask
+        # self.alg = alg
 
     def log_prob_grads_wrt(self, imp_idxs):
         '''
@@ -321,7 +322,7 @@ class fisher_mask_sampling(Strategy):
         xt = xt[idxs_unlabeled]
         start_for_select = time.time()
         # logging.debug("Inside query, before select")
-        chosen = select(xt, n, fisher, init, self.savefile, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        chosen = select(xt, n, fisher, init, self.savefile, "FISH", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
         end_for_select = time.time()
         print ('Select took', end_for_select - start_for_select, 'seconds')

@@ -101,9 +101,10 @@ def save_queried_idx(idx,filename):
         savefile.close()
 
 
-def save_dist_stats(stats_list,filename):
+def save_dist_stats(stats_list,filename, alg):
+    '''requires the alg as input'''
     try:
-        savefile = open("./Save/Queried_idxs/bait_dist_"+ filename+'.p', "br")
+        savefile = open("./Save/Queried_idxs/" + f"{alg}_dist_"+ filename+'.p', "br")
         tE_stats = pickle.load(savefile)
         savefile.close()
     except:
@@ -111,7 +112,7 @@ def save_dist_stats(stats_list,filename):
     finally:
         if not os.path.exists("./Save/Queried_idxs"):
             os.makedirs("./Save/Queried_idxs")
-        savefile = open("./Save/Queried_idxs/bait_dist_"+ filename+'.p', "bw")
+        savefile = open("./Save/Queried_idxs/" + f"{alg}_dist_"+ filename+'.p', "bw")
         tE_stats.append(stats_list)
         pickle.dump(tE_stats, savefile)
         savefile.close()
@@ -156,7 +157,7 @@ def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_le
     return traceEst
 
 
-def select(X, K, fisher, iterates, savefile, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
+def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
     '''
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
@@ -201,7 +202,7 @@ def select(X, K, fisher, iterates, savefile, lamb=1, backwardSteps=0, nLabeled=0
 
             dist = traceEst - np.min(traceEst) + 1e-10
             dist = dist / np.sum(dist)
-            distStats.append([torch.min(dist), torch.max(dist), torch.std(dist)])
+            distStats.append([np.min(dist), np.max(dist), np.std(dist)])
             sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
             ind = sampler.rvs(size=1)[0]
             for j in np.argsort(dist)[::-1]:
@@ -236,7 +237,7 @@ def select(X, K, fisher, iterates, savefile, lamb=1, backwardSteps=0, nLabeled=0
     # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
     # del xt_, innerInv, currentInv, tE, traceEst, sharedArr
     del xt_, innerInv, currentInv, tE, traceEst
-    save_dist_stats(distStats, savefile)
+    save_dist_stats(distStats, savefile, alg)
     torch.cuda.empty_cache()
     gc.collect()
     # print("final part of select takes", time.time()-second_for_loop_time_end)
@@ -252,6 +253,7 @@ class BaitSampling(Strategy):
         self.backwardSteps = args['backwardSteps']
         self.savefile = args["savefile"]
         self.chunkSize = args["chunkSize"]
+        # self.alg = alg
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
@@ -320,7 +322,7 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         start_time = time.time()
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, "BAIT", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         end_time = time.time()
         print('Time taken by select using 2 gpus:', end_time - start_time)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile)
