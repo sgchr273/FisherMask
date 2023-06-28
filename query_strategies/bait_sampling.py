@@ -202,7 +202,7 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
 
             dist = traceEst - np.min(traceEst) + 1e-10
             dist = dist / np.sum(dist)
-            distStats.append([torch.min(dist), torch.max(dist), torch.std(dist)])
+            distStats.append([np.min(dist), np.max(dist), np.std(dist)])
             sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
             ind = sampler.rvs(size=1)[0]
             for j in np.argsort(dist)[::-1]:
