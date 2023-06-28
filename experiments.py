@@ -130,7 +130,7 @@ def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
 
     for rd in range(1, NUM_ROUND+1):
-        save_model(rd, net, opts.savefile)
+        save_model(rd, net, opts.savefile, alg)
         print('Round {}'.format(rd), flush=True)
         torch.cuda.empty_cache()
         gc.collect()
