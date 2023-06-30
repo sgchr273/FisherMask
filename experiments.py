@@ -274,7 +274,7 @@ def main():
 
     # load non-openml dataset
     else:
-        with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "rb") as savefile:
+        with open("./Save/Queried_idxs/dataset_" + "debug_5000" + '.p', "rb") as savefile:
             data_dict = pickle.load(savefile)
 
         # X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
