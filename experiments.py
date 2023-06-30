@@ -274,17 +274,17 @@ def main():
 
     # load non-openml dataset
     else:
-        # with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "rb") as savefile:
-        #     data_dict = pickle.load(savefile)
+        with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "rb") as savefile:
+            data_dict = pickle.load(savefile)
 
-        X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
-        # X_tr = data_dict['X_train']
-        # Y_tr = data_dict['Y_train']
+        # X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
+        X_tr = data_dict['X_train']
+        Y_tr = data_dict['Y_train']
         
         opts.dim = np.shape(X_tr)[1:]
         handler = get_handler(opts.data)
-        # if False:
-        if opts.DEBUG:
+        if False:
+        # if opts.DEBUG:
             X_tr, Y_tr = decrease_dataset(X_tr, Y_tr) # move outside exper function
                                                         # so that BAIT and FISH work on same
             if not os.path.exists("./Save/Queried_idxs/"):
