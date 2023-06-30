@@ -327,7 +327,10 @@ def main():
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
     init_labeled = np.copy(idxs_lb)
-    
+    if opts.DEBUG:
+        with open("./Save/Queried_idxs/initLabeled_" + opts.savefile + '.p', "wb") as savefile:
+            pickle.dump(init_labeled, savefile)
+
     # linear model class
     class linMod(nn.Module):
         def __init__(self, dim=28):
