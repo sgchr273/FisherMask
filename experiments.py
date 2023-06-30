@@ -277,9 +277,10 @@ def main():
         with open("./Save/Queried_idxs/dataset_" + "debug_5000" + '.p', "rb") as savefile:
             data_dict = pickle.load(savefile)
 
-        # X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
+        X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
         X_tr = data_dict['X_train']
         Y_tr = data_dict['Y_train']
+
         
         opts.dim = np.shape(X_tr)[1:]
         handler = get_handler(opts.data)
