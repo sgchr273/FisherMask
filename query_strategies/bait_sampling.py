@@ -133,7 +133,7 @@ def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_le
     # queue.put(currentInv)
     # print(len(xt_), chunkSize)
     traceEst = torch.zeros((total_len//num_gpus))
-    for c_idx in range(len(xt_), chunkSize):
+    for c_idx in range(0, len(xt_), chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
         xt_chunk = xt_chunk.cuda(gpu_id)
         fisher = fisher.cuda(gpu_id)
