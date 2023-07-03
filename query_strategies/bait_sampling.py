@@ -393,7 +393,7 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         start_time = time.time()
         # chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, "BAIT", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))        
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, alg='BAIT', lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))        
         
         end_time = time.time()
         print('Time taken by select using 2 gpus:', end_time - start_time)
