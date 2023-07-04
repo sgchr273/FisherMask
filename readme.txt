@@ -7,5 +7,10 @@ which will select 1000 samples at a time from the SVHN dataset using the BAIT al
 
 python experiments.py --model resnet --nQuery 50 --data CIFAR10 --nStart 1 --nEnd 100 --backwardSteps 0 --DEBUG 500 --aug 1 --savefile 
 
+#Line for big experiment
 
- 
+python experiments.py --model resnet --nQuery 2000 --data CIFAR10 --nStart 1000 --nEnd 25000 --backwardSteps 0 --DEBUG 25000 --aug 1 --savefile big_exp
+
+#For interactive mode on foundry
+
+sinteractive --time 2:00:00 -p cuda --gres=gpu:4
