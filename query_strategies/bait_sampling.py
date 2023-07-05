@@ -48,9 +48,9 @@ from torch.multiprocessing import Pool, Queue, Manager, Array
 import subprocess
 
 def betterSlice(num_gpus, gpu_id, total_len):
-    upper_bound = int((1 + gpu_id) * total_len / num_gpus)
-    lower_bound = int(upper_bound-(total_len/num_gpus))
-    return slice(lower_bound, upper_bound)
+    upper_bound = (1 + gpu_id) * total_len / num_gpus
+    lower_bound = upper_bound-(total_len/num_gpus)
+    return slice(int(lower_bound), int(upper_bound))
 
 
 # kmeans ++ initialization
