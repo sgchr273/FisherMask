@@ -79,7 +79,7 @@ def decrease_dataset(X_tr, Y_tr):
         slce += int(new_size/10)
     return new_Xtr, torch.from_numpy(new_Ytr)
         
-def exper(X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME, alg):
+def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     time_begin_experiment = time.time()
     # set up the specified sampler
     if alg == 'BAIT': # bait sampling
