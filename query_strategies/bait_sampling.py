@@ -99,6 +99,76 @@ def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_le
     return traceEst
 
 
+def fresh_select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
+
+    numEmbs = len(X)
+    indsAll = []
+    dim = X.shape[-1]
+    rank = X.shape[-2]
+
+    currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
+    X = X * np.sqrt(K / (nLabeled + K))
+    fisher = fisher.cuda()
+
+    # forward selection
+    for i in range(int((backwardSteps + 1) *  K)):
+
+        xt_ = X.cuda() 
+        innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
+        innerInv[torch.where(torch.isinf(innerInv))] = torch.sign(innerInv[torch.where(torch.isinf(innerInv))]) * np.finfo('float32').max
+        traceEst = torch.diagonal(xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, dim1=-2, dim2=-1).sum(-1)
+
+        xt = xt_.cpu()
+        del xt, innerInv
+        torch.cuda.empty_cache()
+        gc.collect()
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        traceEst = traceEst.detach().cpu().numpy()
+
+        dist = traceEst - np.min(traceEst) + 1e-10
+        dist = dist / np.sum(dist)
+        sampler = stats.rv_discrete(values=(np.arange(len(dist)), dist))
+        ind = sampler.rvs(size=1)[0]
+        for j in np.argsort(dist)[::-1]:
+            if j not in indsAll:
+                ind = j
+                break
+
+        indsAll.append(ind)
+        print(i, ind, traceEst[ind], flush=True)
+       
+        xt_ = X[ind].unsqueeze(0).cuda()
+        innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
+        currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
+
+    # backward pruning
+    for i in range(len(indsAll) - K):
+
+        # select index for removal
+        xt_ = X[indsAll].cuda()
+        innerInv = torch.inverse(-1 * torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
+        traceEst = torch.diagonal(xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, dim1=-2, dim2=-1).sum(-1)
+        delInd = torch.argmin(-1 * traceEst).item()
+        print(i, indsAll[delInd], -1 * traceEst[delInd].item(), flush=True)
+
+
+        # compute new inverse
+        xt_ = X[indsAll[delInd]].unsqueeze(0).cuda()
+        innerInv = torch.inverse(-1 * torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
+        currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
+
+        del indsAll[delInd]
+
+    del xt_, innerInv, currentInv
+    torch.cuda.empty_cache()
+    gc.collect()
+    return indsAll
+
+
+
+
 def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabeled=0, chunkSize=200):
     '''
     K is the number of images to be selected for labelling, 
