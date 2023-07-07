@@ -1,8 +1,0 @@
-Files already downloaded and verified
-Files already downloaded and verified
-Traceback (most recent call last):
-  File "/home/sgchr/active_nn/experiments.py", line 396, in <module>
-    main()
-  File "/home/sgchr/active_nn/experiments.py", line 281, in main
-    X_tr = data_dict['X_train']
-UnboundLocalError: local variable 'data_dict' referenced before assignment
