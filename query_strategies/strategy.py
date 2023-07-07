@@ -67,7 +67,7 @@ class Strategy:
         accCurrent = 0.
         bestAcc = 0.
         attempts = 0
-        while accCurrent < 0.99: 
+        while accCurrent < 0.99:  # <--- reduce this number for faster trainng in DEBUG
             accCurrent, lossCurrent = self._train(epoch, loader_tr, optimizer)
             if bestAcc < accCurrent:
                 bestAcc = accCurrent
