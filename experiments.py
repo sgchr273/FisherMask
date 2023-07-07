@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from torch import nn
 import time
 import logging
+from saving import save_accuracies, save_model, load_model
 
 from query_strategies import RandomSampling, BadgeSampling, \
                                 BaselineSampling, LeastConfidence, MarginSampling, \
@@ -49,14 +50,12 @@ parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
 parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
 
-
 opts = parser.parse_args()
 NUM_INIT_LB = opts.nStart
 NUM_QUERY = opts.nQuery
 NUM_ROUND = int((opts.nEnd - NUM_INIT_LB)/ opts.nQuery)
 DATA_NAME = opts.data
 logging.basicConfig(level=logging.DEBUG, filename=opts.savefile + '.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
-
 
 def decrease_dataset(X_tr, Y_tr):
     new_size = opts.DEBUG
@@ -79,39 +78,14 @@ def decrease_dataset(X_tr, Y_tr):
         new_Ytr[int(slce-new_size/10):slce] = i
         slce += int(new_size/10)
     return new_Xtr, torch.from_numpy(new_Ytr)
-
-def save_accuracies(new_acc, alg, filename):
-    if alg != "FISH" and alg != "BAIT":
-        raise NameError("Invalid algorithm choice.")
-    try:
-        savefile = open("./Save/Round_accuracies/Accuracy_for_"+filename+'.p', "br")
-        acc_dict = pickle.load(savefile)
-        savefile.close()
-    except:
-        acc_dict = {"FISH":[],"BAIT":[]}
-    finally:
-        if not os.path.exists("./Save/Round_accuracies"):
-            os.makedirs("./Save/Round_accuracies")
-        savefile = open("./Save/Round_accuracies/Accuracy_for_"+filename+'.p', "bw")
-        acc_dict[alg].append(new_acc)
-        pickle.dump(acc_dict, savefile)
-        savefile.close()
-
-def save_model(rd,net,filename, alg):
-    if not os.path.exists("./Save/Models/" + filename):
-        os.makedirs("./Save/Models/"+filename)
-    torch.save(net.state_dict(), "./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd)+ ".pt")
-
-def load_model(rd,net,filename, alg):
-    net.load_state_dict(torch.load("./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd) + ".pt"))
         
-def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
-    rand_mask = calculate_random_mask(net, 1280)
+def exper(X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME, alg):
+    time_begin_experiment = time.time()
     # set up the specified sampler
     if alg == 'BAIT': # bait sampling
         strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'FISH': # fisher mask based sampling
-        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args, rand_mask)
+        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     else: 
         print('choose a valid acquisition function', flush=True)
         raise ValueError
@@ -156,42 +130,14 @@ def exper(alg,X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
         end_time = time.time()
         print('Predict took:', end_time - predict_time)
         accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
-        save_accuracies(accur, alg, opts.savefile)
+        save_accuracies(accur, opts.savefile, alg)
         print(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(accur), flush=True)
         if sum(~strategy.idxs_lb) < opts.nQuery: break
         if opts.rounds > 0 and rd == (opts.rounds - 1): break
-
-def calculate_random_mask(net, mask_size=7014):
-    num_params = sum(p.numel() for p in net.parameters())
-    model_shape = []
-    for i in net.parameters():
-        model_shape.append(list(i.size()))
-
-    flat_model_shape = []
-    for i in net.parameters():
-        flat_model_shape.append(np.prod(list(i.size())))
-    cum_lengths = np.cumsum(flat_model_shape)
-    possible_idxs = range(num_params)
-    rand_wts = np.random.choice(possible_idxs, int(mask_size), replace=False)
-    imp_wt_idxs = [[] for i in range(len(model_shape))]
-    for i in rand_wts:
-        prev_length = 0
-        for idx_layer_num, length in enumerate(cum_lengths):
-            if i < length and length > prev_length: 
-                try:
-                    distance_into_layer = i-prev_length
-                    layer_shape = model_shape[idx_layer_num]
-                    idx_tuple = np.unravel_index(distance_into_layer, layer_shape)
-                except Exception:
-                    print("caught error: ", i, idx_layer_num, prev_length, length, imp_wt_idxs)
-                    raise
-                imp_wt_idxs[idx_layer_num].append(idx_tuple)
-                break
-            prev_length = length
-    return imp_wt_idxs
+        time_end_experiment = time.time()
+        logging.debug(f"{alg} experiment time:" + str(time_end_experiment - time_begin_experiment) + "seconds")
 
 def main():
-
     # non-openml data defaults
     args_pool = {'MNIST':
                     {'n_epoch': 10, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
@@ -274,16 +220,13 @@ def main():
 
     # load non-openml dataset
     else:
-        # with open("./Save/Queried_idxs/dataset_" + opts.savefile + '.p', "rb") as savefile:
-        #     data_dict = pickle.load(savefile)
 
         X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
         opts.dim = np.shape(X_tr)[1:]
         handler = get_handler(opts.data)
         # if False:
         if opts.DEBUG:
-            X_tr, Y_tr = decrease_dataset(X_tr, Y_tr) # move outside exper function
-                                                        # so that BAIT and FISH work on same
+            X_tr, Y_tr = decrease_dataset(X_tr, Y_tr)
             if not os.path.exists("./Save/Queried_idxs/"):
                 os.makedirs("./Save/Queried_idxs") 
             data_dict = {'X_train':X_tr, 'Y_train': Y_tr}
@@ -309,11 +252,8 @@ def main():
     args['savefile'] = opts.savefile
     args['chunkSize'] = opts.chunkSize
 
-    # start experiment
     n_pool = len(Y_tr)
     n_test = len(Y_te)
-    #n_pool = 100
-    #n_test = 100
     print('number of labeled pool: {}'.format(NUM_INIT_LB), flush=True)
     print('number of unlabeled pool: {}'.format(n_pool - NUM_INIT_LB), flush=True)
     print('number of testing pool: {}'.format(n_test), flush=True)
@@ -381,29 +321,17 @@ def main():
     if type(X_tr[0]) is not np.ndarray:
         X_tr = X_tr.numpy()
 
-
-    start = time.time()
-    # exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
-    
-
     exper("BAIT", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
-    bait_time = time.time()
-
     # reset variables
     idxs_lb = init_labeled
     load_model(1, net, opts.savefile, "BAIT") # load the checkpoint for rd 1 of BAIT
     # ----------
-
     exper("FISH", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
-    fish_time = time.time()
-    logging.debug("BAIT took" + str(bait_time - start) + "seconds")
-    logging.debug("FISH with random mask took" + str(fish_time - bait_time) + "seconds")
     #with open("./Save/Round_accuracies/Accuracy_for_" + opts.savefile + '.p', "r+b") as savefile:
         #acc_dict = pickle.load(savefile)
         #acc_dict['BAIT_time'] = bait_time
         #acc_dict['FISH_time'] = fish_time
         #pickle.dump(acc_dict, savefile)
-    print(bait_time - start, fish_time - bait_time)
 
 if __name__=="__main__":
     main()

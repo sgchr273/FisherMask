@@ -1,16 +1,14 @@
-This code is based on both https://github.com/ej0cl6/deep-active-learning and https://github.com/JordanAsh/badge. The entry point is run.py, which allows the user to specify the active learning algorithm (alg), the number of samples to query at each round (nQuery), the number of labeled samples to start with (nStart), and other parameters. An experiment can be executed with a command like
+This code is based on both https://github.com/ej0cl6/deep-active-learning and https://github.com/JordanAsh/badge. 
+The entry point is experiments.py, which allows the user to specify: 
+- the number of labeled samples to start with (nStart),
+- the number of samples to query at each round (nQuery), 
+- the number of labeled samples to end at (nEnd),
+- the experiment name to use for saving run data (savefile),
+- a number <50000 to decrease the dataset to (DEBUG),
+- as well as other parameters.
 
-python run.py --model resnet --nQuery 1000 --data SVHN --alg bait --nStart 100
+An experiment can be executed with a command like:
+    python experiments.py --model resnet --data CIFAR10 --nStart 1000 --nQuery 1200 --nEnd 25000 --DEBUG 25000 --backwardSteps 0 --aug 1 --savefile <insertname>
 
-python run.py --model resnet --nQuery 1000 --data CIFAR10 --alg fish --nStart 1000 --nEnd 2000  
-which will select 1000 samples at a time from the SVHN dataset using the BAIT algorithm. The resnet will be retrained after every selection, and the program will not terminate until the entire dataset has been labeled.
-
-python experiments.py --model resnet --nQuery 50 --data CIFAR10 --nStart 1 --nEnd 100 --backwardSteps 0 --DEBUG 500 --aug 1 --savefile 
-
-#Line for big experiment
-
-python experiments.py --model resnet --nQuery 2000 --data CIFAR10 --nStart 1000 --nEnd 25000 --backwardSteps 0 --DEBUG 25000 --aug 1 --savefile big_exp
-
-#For interactive mode on foundry
-
-sinteractive --time 2:00:00 -p cuda --gres=gpu:4
+or for small test-case purposes:
+    python experiments.py --model resnet --data CIFAR10 --nStart 10 --nQuery 120 --nEnd 250 --DEBUG 250 --backwardSteps 0 --aug 1 --savefile <insertname>

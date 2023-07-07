@@ -46,9 +46,10 @@ from sklearn.exceptions import ConvergenceWarning
 import logging
 from torch.multiprocessing import Pool, Queue, Manager, Array
 import subprocess
+from saving import save_queried_idx, save_dist_stats
 
 def betterSlice(num_gpus, gpu_id, total_len):
-    upper_bound = (1 + gpu_id) * total_len / num_gpus
+    upper_bound = (1+gpu_id)*total_len/num_gpus
     lower_bound = upper_bound-(total_len/num_gpus)
     return slice(int(lower_bound), int(upper_bound))
 
@@ -80,82 +81,21 @@ def getUse():
         except:
             pass
 
-
-def save_queried_idx(idx,filename):
-    '''
-    ideally we should have different files for different algos,
-    can do this by passing alg string to this function
-    '''
-    try:
-        savefile = open("./Save/Queried_idxs/bait_queried_idxs_"+ filename+'.p', "br")
-        que_idxs = pickle.load(savefile)
-        savefile.close()
-    except:
-        que_idxs = []
-    finally:
-        if not os.path.exists("./Save/Queried_idxs"):
-            os.makedirs("./Save/Queried_idxs")
-        savefile = open("./Save/Queried_idxs/bait_queried_idxs_"+ filename+'.p', "bw")
-        que_idxs.append(idx)
-        pickle.dump(que_idxs, savefile)
-        savefile.close()
-
-
-def save_dist_stats(stats_list,filename, alg):
-    '''requires the alg as input'''
-    try:
-        savefile = open("./Save/Queried_idxs/" + f"{alg}_dist_"+ filename+'.p', "br")
-        tE_stats = pickle.load(savefile)
-        savefile.close()
-    except:
-        tE_stats = []
-    finally:
-        if not os.path.exists("./Save/Queried_idxs"):
-            os.makedirs("./Save/Queried_idxs")
-        savefile = open("./Save/Queried_idxs/" + f"{alg}_dist_"+ filename+'.p', "bw")
-        tE_stats.append(stats_list)
-        pickle.dump(tE_stats, savefile)
-        savefile.close()
-
-
 def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_len, gpu_id):
-    # total_len = xt_.shape[0] #* num_gpus
-    # upper_bound = int(total_len/(num_gpus-gpu_id))
-    # lower_bound = int(upper_bound-(total_len/num_gpus))
-    # traceEst = np.frombuffer(sharedArr.get_obj(), dtype=np.float32)
-
-    # print("Inside trace_for_chunk",  chunkSize)
-    
-    # print("Beginning GPU ", gpu_id, " at time: ", time.ctime(), flush=True)
-    # xt_chunk = xt_[lower_bound : upper_bound]
-    # queue.put(xt_chunk)
-    # queue.put(fisher)
-    # queue.put(currentInv)
-    # print(len(xt_), chunkSize)
-    traceEst = torch.zeros(len(xt_))
-    chunkSize = min(len(xt_), chunkSize)
-
+    chunkSize = min(xt_.shape[0], chunkSize)
+    traceEst = torch.zeros((len(xt_)))
     for c_idx in range(0, len(xt_), chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
         xt_chunk = xt_chunk.cuda(gpu_id)
         fisher = fisher.cuda(gpu_id)
         currentInv = currentInv.cuda(gpu_id)
-        # print(F"Sent to {gpu_id} in", time.time() - send_time)
         # with torch.no_grad():
-        innerInv_time = time.time()
         innerInv = torch.inverse(torch.eye(rank).cuda(gpu_id) + xt_chunk @ currentInv @ xt_chunk.transpose(1, 2)) 
-        
-        # print("InnerInv at GPU", innerInv.get_device(), " took ", time.time()-innerInv_time, "has shape", innerInv.shape)
-        tracest_time = time.time()
         traceEst[c_idx : c_idx + chunkSize] = torch.diagonal(
             xt_chunk @ currentInv @ fisher @ currentInv @ xt_chunk.transpose(1, 2) @ innerInv,
             dim1=-2,
             dim2=-1
         ).sum(-1).detach().cpu()
-        # print("traceEst calculated in", time.time() - tracest_time)
-   
-    
-    # print("Finishing GPU ", gpu_id, " at time: ", time.ctime(), flush=True)
     return traceEst
 
 
@@ -234,29 +174,23 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
     K is the number of images to be selected for labelling, 
     iterates is the fisher for images that are already labelled
     '''
+    time_begin_select = time.time()
     numEmbs = len(X)
     dim = X.shape[-1]
     rank = X.shape[-2]
     indsAll = []
-
     currentInv = torch.inverse(lamb * torch.eye(dim).cuda() + iterates.cuda() * nLabeled / (nLabeled + K))
-    # what is lamb used for here?
     X = X * np.sqrt(K / (nLabeled + K))
-    # fisher = fisher.cuda()
-    total = 0
     xt_ = X
-    # chunkSize = min(X.shape[0], chunkSize)
+    #chunkSize = min(X.shape[0], chunkSize)
     total_len = xt_.shape[0]
-    # tE = Array('d', total_len, lock=True)
     NUM_GPUS = torch.cuda.device_count()
     fishers = [fisher.clone().detach().cuda(x) for x in range(NUM_GPUS)]
     xts = [X[betterSlice(NUM_GPUS, x, total_len)].clone().detach().cuda(x) for x in range(NUM_GPUS)]
     torch.multiprocessing.set_start_method('spawn', force=True)
     distStats = []
-    here = time.time()
+
     with Pool(processes=NUM_GPUS) as pool:
-        # args = [(xt_, rank, chunkSize, NUM_GPUS, currentInv, fisher, x) for x in range(NUM_GPUS)]
-        # args = [(xts[x], rank, chunkSize, NUM_GPUS, cInvs[x], fisher[x], x) for x in range(NUM_GPUS)]
         for i in range(int((backwardSteps + 1) *  K)):
             cInvs = [currentInv.clone().detach().cuda(x) for x in range(NUM_GPUS)]
             args = [(xts[x], rank, NUM_GPUS, chunkSize, cInvs[x], fishers[x], total_len, x) for x in range(NUM_GPUS)]
@@ -264,12 +198,10 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
             traceEst = tE[0]
             for j in range(1,NUM_GPUS):
                 traceEst = torch.cat((traceEst, tE[j]))
-            # xt = xt_.cpu()
             torch.cuda.empty_cache()
             gc.collect()
             torch.cuda.empty_cache()
             gc.collect()
-            # print(len(traceEst))
             traceEst = traceEst.detach().cpu().numpy()
 
             dist = traceEst - np.min(traceEst) + 1e-10
@@ -286,18 +218,13 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
             temp_xt = X[ind].unsqueeze(0).cuda()
             innerInv = torch.inverse(torch.eye(rank).cuda(0) + temp_xt @ cInvs[0] @ temp_xt.transpose(1, 2)).detach()
             currentInv = (cInvs[0] - cInvs[0] @ temp_xt.transpose(1, 2) @ innerInv @ temp_xt @ cInvs[0]).detach()[0]
-    print('With took,', time.time() - here)
     
-    rounds = len(indsAll) - K # a positive value for backwardSteps will run the next for loop
-    for i in range(rounds):
-
+    for i in range(len(indsAll) - K):
         # select index for removal
         xt_ = torch.tensor(X[indsAll]).cuda()
         innerInv = torch.inverse(-1 * torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         traceEst = torch.diagonal(xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, dim1=-2, dim2=-1).sum(-1)
         delInd = torch.argmin(-1 * traceEst).item()
-        #print(i, indsAll[delInd], -1 * traceEst[delInd].item(), flush=True)
-
 
         # compute new inverse
         xt_ = torch.tensor(X[indsAll[delInd]]).unsqueeze(0).cuda()
@@ -305,27 +232,25 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
         currentInv = (currentInv - currentInv @ xt_.transpose(1, 2) @ innerInv @ xt_ @ currentInv).detach()[0]
 
         del indsAll[delInd]
-    #second_for_loop_time_end = time.time()
-    # print("The second for loop in the select function took ", (second_for_loop_time_end-second_for_loop_time))
-    # del xt_, innerInv, currentInv, tE, traceEst, sharedArr
+
     del xt_, innerInv, currentInv, tE, traceEst
     save_dist_stats(distStats, savefile, alg)
     torch.cuda.empty_cache()
     gc.collect()
-    # print("final part of select takes", time.time()-second_for_loop_time_end)
+    time_end_select = time.time()
+    logging.debug("Select took" + str(time_end_select - time_begin_select) + "seconds")
     return indsAll
 
 class BaitSampling(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args):
         super(BaitSampling, self).__init__(X, Y, idxs_lb, net, handler, args)
-
+        self.alg = "BAIT"
         self.fishIdentity = args['fishIdentity']
         self.fishInit = args['fishInit']
         self.lamb = args['lamb']
         self.backwardSteps = args['backwardSteps']
         self.savefile = args["savefile"]
         self.chunkSize = args["chunkSize"]
-        # self.alg = alg
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
@@ -348,11 +273,10 @@ class BaitSampling(Strategy):
         and is calculating the Vx matrix.
         For us, xt should contain the gradients wrt all the important weights.
         '''
-
+        batchSize = 500
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
-            batchSize = 500
             nClass = torch.max(self.Y).item() + 1
             fisher = torch.zeros(xt.shape[-1], xt.shape[-1])
             rounds = int(np.ceil(len(self.X) / batchSize))
@@ -372,7 +296,6 @@ class BaitSampling(Strategy):
 
 
         # get fisher only for samples that have been seen before
-        batchSize = 500
         nClass = torch.max(self.Y).item() + 1
         init = torch.zeros(xt.shape[-1], xt.shape[-1])
         xt2 = xt[self.idxs_lb]
@@ -387,21 +310,18 @@ class BaitSampling(Strategy):
                 torch.cuda.empty_cache()
                 gc.collect()
 
-
         phat = self.predict_prob(self.X[idxs_unlabeled], self.Y[idxs_unlabeled])
         print('all probs: ' + 
                 str(str(torch.mean(torch.max(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
-        start_time = time.time()
-        # chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, "BAIT", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, alg='BAIT', lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))        
         
-        end_time = time.time()
-        print('Time taken by select using 2 gpus:', end_time - start_time)
-        save_queried_idx(idxs_unlabeled[chosen], self.savefile)
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, "BAIT", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        save_queried_idx(idxs_unlabeled[chosen], self.savefile, self.alg)
+
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.min(phat[chosen, :], 1)[0]).item())) + ' ' +
                 str(str(torch.mean(torch.std(phat[chosen,:], 1)).item())), flush=True)
+        
         return idxs_unlabeled[chosen]

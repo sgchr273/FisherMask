@@ -1,0 +1,23 @@
+6/28/23 Repo cleanup changlog:
+---------------------------------------
+
+Repo-wide:
+	-Removed accumulated junk/outdated files
+	-Updated .gitignore
+	-Updated readme.txt
+	-General cleaning of unnecessary or outdated comments and prints
+	-Created saving.py to house all data saving and related functions
+	-Refreshed freshBAIT to ensure 
+	-Removed oml/ containing an openml datapack we aren't utilizing which cost ~71MB of space and was duplicated with freshBAIT as well
+*reduced overall footprint from 151MB to 11.5MB, removed 148 files
+
+experiments.py:
+	-exper is now self-timing
+	-moved calculated_random_mask back to fisher_mask_sampling.py
+
+fisher_mask_sampling.py:
+	-combined calculate_gradients & calculate_mask into a single class-function, calculate_fiskmask
+
+bait_sampling.py:
+	-select is now self-timing
+	-fixed range bug, betterslice bug, floor division bug, and chunksize calculation bug in trace_for_chunk
