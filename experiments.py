@@ -384,17 +384,17 @@ def main():
 
     start = time.time()
     # exper("BAIT",X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME)
-    bait_time = time.time()
+    
 
     exper("BAIT", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     bait_time = time.time()
 
     # reset variables
-    #idxs_lb = init_labeled
-    #load_model(1, net, opts.savefile, "BAIT") # load the checkpoint for rd 1 of BAIT
+    idxs_lb = init_labeled
+    load_model(1, net, opts.savefile, "BAIT") # load the checkpoint for rd 1 of BAIT
     # ----------
 
-    #exper("FISH", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+    exper("FISH", X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     fish_time = time.time()
     logging.debug("BAIT took" + str(bait_time - start) + "seconds")
     logging.debug("FISH with random mask took" + str(fish_time - bait_time) + "seconds")

@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/home/sgchr/active_nn/freshBAIT/gone-fishing/run.py", line 30, in <module>
-    from query_strategies import BaitSampling
-  File "/home/sgchr/active_nn/freshBAIT/gone-fishing/query_strategies/__init__.py", line 17, in <module>
-    from .bait_sampling  import BaitSampling
-  File "/home/sgchr/active_nn/freshBAIT/gone-fishing/query_strategies/bait_sampling.py", line 215
-    end = time.time()
-TabError: inconsistent use of tabs and spaces in indentation
