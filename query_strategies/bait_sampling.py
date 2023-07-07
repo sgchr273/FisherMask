@@ -132,7 +132,9 @@ def trace_for_chunk(xt_, rank, num_gpus, chunkSize, currentInv, fisher, total_le
     # queue.put(fisher)
     # queue.put(currentInv)
     # print(len(xt_), chunkSize)
-    traceEst = torch.zeros((total_len//num_gpus))
+    traceEst = torch.zeros(len(xt_))
+    chunkSize = min(len(xt_), chunkSize)
+
     for c_idx in range(0, len(xt_), chunkSize):
         xt_chunk = xt_[c_idx : c_idx + chunkSize]
         xt_chunk = xt_chunk.cuda(gpu_id)
@@ -243,7 +245,7 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
     # fisher = fisher.cuda()
     total = 0
     xt_ = X
-    chunkSize = min(X.shape[0], chunkSize)
+    # chunkSize = min(X.shape[0], chunkSize)
     total_len = xt_.shape[0]
     # tE = Array('d', total_len, lock=True)
     NUM_GPUS = torch.cuda.device_count()
