@@ -86,6 +86,8 @@ def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
         strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'FISH': # fisher mask based sampling
         strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'rand':
+        strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     else: 
         print('choose a valid acquisition function', flush=True)
         raise ValueError
