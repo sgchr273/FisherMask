@@ -11,14 +11,14 @@ def load_model(rd, net, filename, alg):
     net.load_state_dict(torch.load("./Save/Models/"+ filename + f"/{alg}_model_" +  str(rd) + ".pt"))
 
 def save_accuracies(new_acc, filename, alg):
-    if alg != "FISH" and alg != "BAIT":
-        raise NameError("Invalid algorithm choice.")
+    # if alg != "FISH" and alg != "BAIT":
+    #     raise NameError("Invalid algorithm choice.")
     try:
         savefile = open("./Save/Round_accuracies/Accuracy_for_"+filename+'.p', "br")
         acc_dict = pickle.load(savefile)
         savefile.close()
     except:
-        acc_dict = {"FISH":[],"BAIT":[]}
+        acc_dict = {"FISH":[],"BAIT":[], "rand" : []}
     finally:
         if not os.path.exists("./Save/Round_accuracies"):
             os.makedirs("./Save/Round_accuracies")

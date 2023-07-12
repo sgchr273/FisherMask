@@ -49,6 +49,7 @@ parser.add_argument('--pct_top', help='percentage of important weights to use fo
 parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=50)
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
 parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
+parser.add_argument('--compare', help='previous run to compare to', type=str, required=True, default='random_mask_exp_25K')
 
 opts = parser.parse_args()
 NUM_INIT_LB = opts.nStart

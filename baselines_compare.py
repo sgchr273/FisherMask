@@ -22,8 +22,9 @@ parser.add_argument('--lamb', help='lambda', type=float, default=1)
 parser.add_argument('--model', help='model - resnet, vgg, or mlp', type=str, default='resnet')
 parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
 parser.add_argument('--lr', help='learning rate', type=float, default=1e-4)
+parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
 
-parser.add_argument('--compare', help='previous run to compare to', type=str, required=True)
+parser.add_argument('--compare', help='previous run to compare to', type=str, required=True, default='random_mask_exp_25K')
 
 opts = parser.parse_args()
 DATA_NAME = opts.data
