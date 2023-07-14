@@ -6,7 +6,7 @@ import resnet
 
 
 from saving import load_model
-from experiments import exper
+from experiments import exper, opts
 
 
 parser = argparse.ArgumentParser()
@@ -24,11 +24,11 @@ parser.add_argument('--pct_top', help='percentage of important weights to use fo
 parser.add_argument('--lr', help='learning rate', type=float, default=1e-4)
 parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
 
-parser.add_argument('--compare', help='previous run to compare to', type=str, required=True, default='random_mask_exp_25K')
+parser.add_argument('--compare', help='previous run to compare to', type=str, required=True)
 
 opts = parser.parse_args()
 DATA_NAME = opts.data
-SAVE_FILE = opts.savefile + '_for_' + opts.compare
+SAVE_FILE = opts.savefile + F'_{opts.alg}_' + '_for_' + opts.compare
 NUM_QUERY = opts.nQuery
 
 # non-openml data defaults
