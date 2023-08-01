@@ -2,6 +2,7 @@ import numpy as np
 from torch import nn
 import sys
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
@@ -35,8 +36,9 @@ class Strategy:
             x, y = Variable(x.cuda()), Variable(y.cuda())
             optimizer.zero_grad()
             out, e1 = self.clf(x)
-            loss = F.cross_entropy(out, y)
-            accFinal += torch.sum((torch.max(out,1)[1] == y).float()).data.item()
+            loss = F.cross_entropy(out, y) #, weight = torch.tensor([3,1.5]).cuda()
+            # accFinal += torch.sum((torch.max(out,1)[1] == y).float()).data.item()
+            accFinal += torch.sum((torch.max(out,1)[1] == y)).float().data.item()
             loss.backward()
 
             # clamp gradients, just in case

@@ -137,7 +137,7 @@ def fresh_select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
                 break
 
         indsAll.append(ind)
-        print(i, ind, traceEst[ind], flush=True)
+        # print(i, ind, traceEst[ind], flush=True)
        
         xt_ = X[ind].unsqueeze(0).cuda()
         innerInv = torch.inverse(torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
@@ -151,7 +151,7 @@ def fresh_select(X, K, fisher, iterates, lamb=1, backwardSteps=0, nLabeled=0):
         innerInv = torch.inverse(-1 * torch.eye(rank).cuda() + xt_ @ currentInv @ xt_.transpose(1, 2)).detach()
         traceEst = torch.diagonal(xt_ @ currentInv @ fisher @ currentInv @ xt_.transpose(1, 2) @ innerInv, dim1=-2, dim2=-1).sum(-1)
         delInd = torch.argmin(-1 * traceEst).item()
-        print(i, indsAll[delInd], -1 * traceEst[delInd].item(), flush=True)
+        # print(i, indsAll[delInd], -1 * traceEst[delInd].item(), flush=True)
 
 
         # compute new inverse
@@ -190,6 +190,7 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
     torch.multiprocessing.set_start_method('spawn', force=True)
     distStats = []
 
+        
     with Pool(processes=NUM_GPUS) as pool:
         for i in range(int((backwardSteps + 1) *  K)):
             cInvs = [currentInv.clone().detach().cuda(x) for x in range(NUM_GPUS)]
@@ -218,7 +219,7 @@ def select(X, K, fisher, iterates, savefile, alg, lamb=1, backwardSteps=0, nLabe
             temp_xt = X[ind].unsqueeze(0).cuda()
             innerInv = torch.inverse(torch.eye(rank).cuda(0) + temp_xt @ cInvs[0] @ temp_xt.transpose(1, 2)).detach()
             currentInv = (cInvs[0] - cInvs[0] @ temp_xt.transpose(1, 2) @ innerInv @ temp_xt @ cInvs[0]).detach()[0]
-    
+
     for i in range(len(indsAll) - K):
         # select index for removal
         xt_ = torch.tensor(X[indsAll]).cuda()
@@ -254,6 +255,7 @@ class BaitSampling(Strategy):
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
+        print(len(idxs_unlabeled))
         '''
         idxs_lb stands for indexes_labeled, i.e. image idxs that have been labeled.
         idxs_lb is a 0-1 vector having length as n_pool, a particular component is 
@@ -273,7 +275,7 @@ class BaitSampling(Strategy):
         and is calculating the Vx matrix.
         For us, xt should contain the gradients wrt all the important weights.
         '''
-        batchSize = 500
+        batchSize = 250
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
@@ -316,7 +318,7 @@ class BaitSampling(Strategy):
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         
-        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, "BAIT", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        chosen = fresh_select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
         save_queried_idx(idxs_unlabeled[chosen], self.savefile, self.alg)
 
         print('selected probs: ' +

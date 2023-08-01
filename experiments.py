@@ -39,7 +39,7 @@ parser.add_argument('--rounds', help='number of embedding dims (mlp)', type=int,
 parser.add_argument('--trunc', help='number of embedding dims (mlp)', type=int, default=-1)
 parser.add_argument('--btype', help='acquisition algorithm', type=str, default='min')
 parser.add_argument('--modes', help='openML dataset index, if any', type=int, default=1)
-parser.add_argument('--aug', help='do augmentation (for cifar)', type=int, default=0)
+parser.add_argument('--aug', help='do augmentation (for cifar)', type=int, default=1)
 parser.add_argument('--lamb', help='lambda', type=float, default=1)
 parser.add_argument('--fishIdentity', help='for ablation, setting fisher to be identity', type=int, default=0)
 parser.add_argument('--fishInit', help='initialize selection with fisher on seen data', type=int, default=1)
@@ -81,6 +81,8 @@ def decrease_dataset(X_tr, Y_tr):
     return new_Xtr, torch.from_numpy(new_Ytr)
         
 def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
+  
+
     time_begin_experiment = time.time()
     # set up the specified sampler
     if alg == 'BAIT': # bait sampling
@@ -89,6 +91,10 @@ def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
         strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'rand':
         strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'coreset': # coreset sampling
+        strategy = CoreSet(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'entropy': # entropy-based sampling
+        strategy = EntropySampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     else: 
         print('choose a valid acquisition function', flush=True)
         raise ValueError
@@ -101,9 +107,13 @@ def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     if type(X_te) == torch.Tensor: X_te = X_te.numpy()
 
     # round 0 accuracy
-    strategy.train()
+    if alg == 'BAIT':
+        strategy.train()
+    else:
+        strategy.clf = net.cuda()
     P = strategy.predict(X_te, Y_te)
     accur = 1.0 * (Y_te == P).sum().item() / len(Y_te)
+    save_accuracies(accur, opts.savefile, alg)
     print(str(opts.nStart) + '\ttesting accuracy {}'.format(accur), flush=True)
 
     for rd in range(1, NUM_ROUND+1):

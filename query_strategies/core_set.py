@@ -4,12 +4,15 @@ from .strategy import Strategy
 # from sklearn.neighbors import NearestNeighbors
 import pickle
 from datetime import datetime
-# from sklearn.metrics import pairwise_distances
+from sklearn.metrics import pairwise_distances
+from saving import save_queried_idx
 
 class CoreSet(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args, tor=1e-4):
         super(CoreSet, self).__init__(X, Y, idxs_lb, net, handler, args)
         self.tor = tor
+        self.savefile = args["savefile"]
+        self.alg = "coreset"
 
     def furthest_first(self, X, X_set, n):
         m = np.shape(X)[0]
@@ -39,7 +42,10 @@ class CoreSet(Strategy):
 
         chosen = self.furthest_first(embedding[idxs_unlabeled, :], embedding[lb_flag, :], n)
 
-        return idxs_unlabeled[chosen]
+        result = idxs_unlabeled[chosen]
+
+        save_queried_idx(result, self.savefile, self.alg)
+        return result
 
 
     def query_old(self, n):

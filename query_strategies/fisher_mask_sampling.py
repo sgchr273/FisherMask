@@ -225,6 +225,7 @@ class fisher_mask_sampling(Strategy):
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         
         xt = xt[idxs_unlabeled]
+        
         chosen = select(xt, n, fisher, init, self.savefile, "FISH", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile, self.alg)
         print('selected probs: ' +

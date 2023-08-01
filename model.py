@@ -64,7 +64,7 @@ class Net3(nn.Module):
         self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
         self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
         self.fc1 = nn.Linear(1024, 50)
-        self.fc2 = nn.Linear(50, 10)
+        self.fc2 = nn.Linear(50, 2)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
