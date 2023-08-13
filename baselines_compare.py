@@ -79,19 +79,13 @@ def unbalanced_train_dataset(X_tr, Y_tr):
     var3 = np.random.choice(np.arange(len(X_tr), dtype=int)[masks[2] == 1], 250, replace=False)
 
     var4 = np.random.choice(np.arange(len(X_tr), dtype=int)[masks[3] == 1], 250, replace=False)
-    new_Xtr = np.concatenate(( X_tr[var],  X_tr[var3], X_tr[var4]))
-    for i in range(19):
-        new_Xtr = np.concatenate((new_Xtr, X_tr[var],  X_tr[var3], X_tr[var4]))
-
-    new_Xtr = np.concatenate((new_Xtr,  X_tr[var2]))
+    new_Xtr = np.concatenate(( X_tr[var], X_tr[var2], X_tr[var3], X_tr[var4]))
   
     new_Ytr = np.zeros(len(new_Xtr), dtype = 'int')
-    for i in range(20):
-        slce=i*750
-        new_Ytr[slce:slce+250] = 0
-        new_Ytr[slce+250:slce+500] = 2
-        new_Ytr[slce+500:slce+750] = 3
-    new_Ytr[15000:20000] = 1
+    new_Ytr[0:250] = 0
+    new_Ytr[250:5250] = 1
+    new_Ytr[5250:5500] = 2
+    new_Ytr[5500:5750] = 3
 
     return new_Xtr, torch.from_numpy(new_Ytr)
 
@@ -137,6 +131,7 @@ if __name__=="__main__":
 
     for i in range(5):
         opts.savefile = SAVE_FILE + str(i)
+        net = resnet.ResNet18(num_classes=4)
         load_model(1, net, opts.savefile, 'entropy')
         idxs_lb = np.zeros(n_pool, dtype=bool)
         idxs_tmp = np.arange(n_pool)
@@ -149,19 +144,13 @@ if __name__=="__main__":
 
     net = resnet.ResNet18(num_classes=4)
 
-    for i in range(5):
-        opts.savefile = SAVE_FILE + str(i)
-        load_model(1, net, opts.savefile, 'entropy')
-        idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        exper('coreset', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
 
-    net = resnet.ResNet18(num_classes=4)
 
     for i in range(5):
         opts.savefile = SAVE_FILE + str(i)
         load_model(1, net, opts.savefile, 'entropy')
         idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+        exper('rand', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
 
     net = resnet.ResNet18(num_classes=4)
 
@@ -177,5 +166,5 @@ if __name__=="__main__":
         opts.savefile = SAVE_FILE + str(i)
         load_model(1, net, opts.savefile, 'entropy')
         idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        exper('rand', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
     

@@ -41,7 +41,7 @@ class CoreSet(Strategy):
         embedding = embedding.numpy()
 
         chosen = self.furthest_first(embedding[idxs_unlabeled, :], embedding[lb_flag, :], n)
-
+        assert len(chosen) == n
         result = idxs_unlabeled[chosen]
 
         save_queried_idx(result, self.savefile, self.alg)
