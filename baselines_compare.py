@@ -127,8 +127,6 @@ if __name__=="__main__":
     NUM_INIT_LB = opts.nStart
 
     net = resnet.ResNet18(num_classes=4)
-
-
     for i in range(5):
         opts.savefile = SAVE_FILE + str(i)
         net = resnet.ResNet18(num_classes=4)
@@ -143,9 +141,6 @@ if __name__=="__main__":
         exper('entropy', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
 
     net = resnet.ResNet18(num_classes=4)
-
-
-
     for i in range(5):
         opts.savefile = SAVE_FILE + str(i)
         load_model(1, net, opts.savefile, 'entropy')
@@ -153,18 +148,23 @@ if __name__=="__main__":
         exper('rand', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
 
     net = resnet.ResNet18(num_classes=4)
-
     for i in range(5):
         opts.savefile = SAVE_FILE + str(i)
         load_model(1, net, opts.savefile, 'entropy')
         idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        exper('BAIT', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="standard")
 
     net = resnet.ResNet18(num_classes=4)
-    
     for i in range(5):
         opts.savefile = SAVE_FILE + str(i)
         load_model(1, net, opts.savefile, 'entropy')
         idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="dispersed")
+
+    net = resnet.ResNet18(num_classes=4)
+    for i in range(5):
+        opts.savefile = SAVE_FILE + str(i)
+        load_model(1, net, opts.savefile, 'entropy')
+        idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
+        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="relative")
     

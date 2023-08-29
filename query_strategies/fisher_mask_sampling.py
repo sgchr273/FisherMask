@@ -19,7 +19,7 @@ from saving import save_imp_weights, save_queried_idx
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class fisher_mask_sampling(Strategy):
-    def __init__(self, X, Y, idxs_lb, net, handler, args):
+    def __init__(self, X, Y, idxs_lb, net, handler, args, method):
         super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
         self.alg = "FISH"
         self.fishIdentity = args['fishIdentity']
@@ -29,9 +29,10 @@ class fisher_mask_sampling(Strategy):
         self.pct_top = args['pct_top']
         self.savefile = args["savefile"]
         self.chunkSize = args["chunkSize"]
+        self.method = method
         self.rand_mask = self.calculate_random_mask(1280)
 
-    def calculate_fishmask(self, pct_top=0.02):
+    def calculate_fishmask(self, pct_top=0.02, method="standard"):
         #---------------------------------Originally calculate_gradients---------------------------------
         self.net.to(device)
         for param in self.net.parameters():
@@ -66,41 +67,82 @@ class fisher_mask_sampling(Strategy):
                     break
 
         #---------------------------------Originally calculate_mask---------------------------------
-        list_t = list(sq_grads_expect.values()) # same dim as model
-        combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) # dim 61 with grad values flattened for each layer
-        list_lengths = [len(ten.flatten()) for ten in list_t] # dim 61 with size of each layer
-        cum_lengths = np.cumsum(list_lengths)
-        sorted_idxs = np.argsort(combined_arrays[:cum_lengths[-2]])
-        num_top = int(pct_top * len(combined_arrays))
-        # top_idxs = sorted_idxs[-num_top:]
+        if method == "standard":
+            list_t = list(sq_grads_expect.values()) # same dim as model
+            combined_arrays = np.hstack([t.flatten() for t in sq_grads_expect.values()]) # dim 61 with grad values flattened for each layer
+            list_lengths = [len(ten.flatten()) for ten in list_t] # dim 61 with size of each layer
+            cum_lengths = np.cumsum(list_lengths)
+            sorted_idxs = np.argsort(combined_arrays[:cum_lengths[-2]])
+            num_top = int(pct_top * len(combined_arrays))
+            # top_idxs = sorted_idxs[-num_top:]
 
-        num_last_layer = sum(list_lengths[-1:]) 
-        # in FISH ResNet architecture, the last layer has bias=False
-        # if last layer has both weight and bias, set -1 to -2 above
+            num_last_layer = sum(list_lengths[-1:]) 
+            # in FISH ResNet architecture, the last layer has bias=False
+            # if last layer has both weight and bias, set -1 to -2 above
 
-        if num_last_layer < num_top:
-            top_idxs = np.hstack(
-                [sorted_idxs[-(num_top - num_last_layer):], 
-                np.arange(cum_lengths[-2], cum_lengths[-1])]
-            )
-            assert len(top_idxs) == num_top
-        else:
-            raise ValueError("too small top percentage")
+            if num_last_layer < num_top:
+                top_idxs = np.hstack(
+                    [sorted_idxs[-(num_top - num_last_layer):], 
+                    np.arange(cum_lengths[-2], cum_lengths[-1])]
+                )
+                assert len(top_idxs) == num_top
+            else:
+                raise ValueError("too small top percentage")
 
-        imp_wt_idxs = [[] for i in range(len(list_t))]
-        for idx in top_idxs:
-            prev_length = 0
-            for idx_layer_num, length in enumerate(cum_lengths):
-                if idx < length and length > prev_length: 
+            imp_wt_idxs = [[] for i in range(len(list_t))]
+            for idx in top_idxs:
+                prev_length = 0
+                for idx_layer_num, length in enumerate(cum_lengths):
+                    if idx < length and length > prev_length: 
+                        try:
+                            idx_tuple = np.nonzero(combined_arrays[idx] == list_t[idx_layer_num])
+                            imp_wt_idxs[idx_layer_num].append(idx_tuple)
+                        except Exception:
+                            print("caught error: ", idx, idx_layer_num, length, imp_wt_idxs)
+                            raise
+                        break
+                    prev_length = length
+        elif method == "dispersed":
+            grad_values = list(sq_grads_expect.values())
+            imp_wt_idxs = [[] for i in range(len(grad_values))]
+            for layer in range(len(grad_values)): #layer-by-layer
+                num_imp = np.ceil(pct_top * np.prod(np.array(grad_values[layer]).shape))
+                print(num_imp,np.prod(np.array(grad_values[layer]).shape))
+                sorted_grads = np.argsort(grad_values[layer],axis=None)
+                top_grad_idxs = sorted_grads[-int(num_imp):]
+                #top_grad_idxs = np.hstack([np.array(t).flatten() for t in top_grad_idxs])
+                #flat_layer = np.array(grad_values[layer]).flatten()
+                for idx in top_grad_idxs:
                     try:
-                        idx_tuple = np.nonzero(combined_arrays[idx] == list_t[idx_layer_num])
-                        imp_wt_idxs[idx_layer_num].append(idx_tuple)
+                        #imp_wt_idxs[i].append(np.nonzero(flat_layer[idx] == grad_values[i]))
+                        imp_wt_idxs[layer].append(np.unravel_index(idx, grad_values[layer].shape))
                     except Exception:
-                        print("caught error: ", idx, idx_layer_num, length, imp_wt_idxs)
+                        print("caught error: ", layer, len(np.array(grad_values[layer]).flatten()), len(top_grad_idxs), top_grad_idxs)
                         raise
-                    break
-                prev_length = length
+        elif method == "relative":
+            grad_values = list(sq_grads_expect.values())
+            imp_wt_idxs = [[] for i in range(len(grad_values))]
+            for layer in range(len(grad_values)): #layer-by-layer
+                #num_imp = np.ceil(pct_top * np.prod(np.array(grad_values[layer]).shape))
+                layer_avg = np.average(grad_values[i])
+                sorted_grads = np.argsort(grad_values[layer],axis=None)
+                flat_layer = np.array(grad_values[layer]).flatten()
+                top_grad_idxs = [i for i in sorted_grads if flat_layer[i] > layer_avg*1.25]
+                #print(layer_avg, grad_values[sorted_grads[0]])
+                for idx in top_grad_idxs:
+                    try:
+                        imp_wt_idxs[layer].append(np.unravel_index(idx, grad_values[layer].shape))
+                    except Exception:
+                        print("caught error: ", layer, len(np.array(grad_values[layer]).flatten()), len(top_grad_idxs), top_grad_idxs)
+                        raise
+        else:
+            raise Exception("Invalid Fish Mask Selection Method.")
         return imp_wt_idxs
+
+
+    
+
+
 
     def calculate_random_mask(self, mask_size=7014):
         num_params = sum(p.numel() for p in self.net.parameters())
@@ -177,7 +219,10 @@ class fisher_mask_sampling(Strategy):
     def query(self, n):
         self.fishIdentity == 0
         #imp_wt_idxs = self.calculate_fishmask(self.pct_top)
-        imp_wt_idxs = self.rand_mask
+        if self.method != "random":
+            imp_wt_idxs = self.calculate_fishmask(self.pct_top, self.method)
+        else:
+            imp_wt_idxs = self.rand_mask
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt = self.log_prob_grads_wrt(imp_wt_idxs)
         torch.cuda.empty_cache()

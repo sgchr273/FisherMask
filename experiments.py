@@ -80,7 +80,7 @@ def decrease_dataset(X_tr, Y_tr):
         slce += int(new_size/10)
     return new_Xtr, torch.from_numpy(new_Ytr)
         
-def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
+def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME, method="standard"):
   
 
     time_begin_experiment = time.time()
@@ -88,7 +88,7 @@ def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):
     if alg == 'BAIT': # bait sampling
         strategy = BaitSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'FISH': # fisher mask based sampling
-        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+        strategy = fisher_mask_sampling(X_tr, Y_tr, idxs_lb, net, handler, args, method)
     elif alg == 'rand':
         strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'coreset': # coreset sampling
