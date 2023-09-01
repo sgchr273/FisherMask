@@ -107,14 +107,13 @@ class fisher_mask_sampling(Strategy):
             imp_wt_idxs = [[] for i in range(len(grad_values))]
             for layer in range(len(grad_values)): #layer-by-layer
                 num_imp = np.ceil(pct_top * np.prod(np.array(grad_values[layer]).shape))
-                print(num_imp,np.prod(np.array(grad_values[layer]).shape))
                 sorted_grads = np.argsort(grad_values[layer],axis=None)
-                top_grad_idxs = sorted_grads[-int(num_imp):]
-                #top_grad_idxs = np.hstack([np.array(t).flatten() for t in top_grad_idxs])
-                #flat_layer = np.array(grad_values[layer]).flatten()
+                if layer == len(grad_values)-1:
+                    top_grad_idxs = sorted_grads
+                else:
+                    top_grad_idxs = sorted_grads[-int(num_imp):]
                 for idx in top_grad_idxs:
                     try:
-                        #imp_wt_idxs[i].append(np.nonzero(flat_layer[idx] == grad_values[i]))
                         imp_wt_idxs[layer].append(np.unravel_index(idx, grad_values[layer].shape))
                     except Exception:
                         print("caught error: ", layer, len(np.array(grad_values[layer]).flatten()), len(top_grad_idxs), top_grad_idxs)
@@ -123,12 +122,10 @@ class fisher_mask_sampling(Strategy):
             grad_values = list(sq_grads_expect.values())
             imp_wt_idxs = [[] for i in range(len(grad_values))]
             for layer in range(len(grad_values)): #layer-by-layer
-                #num_imp = np.ceil(pct_top * np.prod(np.array(grad_values[layer]).shape))
                 layer_avg = np.average(grad_values[i])
                 sorted_grads = np.argsort(grad_values[layer],axis=None)
                 flat_layer = np.array(grad_values[layer]).flatten()
                 top_grad_idxs = [i for i in sorted_grads if flat_layer[i] > layer_avg*1.25]
-                #print(layer_avg, grad_values[sorted_grads[0]])
                 for idx in top_grad_idxs:
                     try:
                         imp_wt_idxs[layer].append(np.unravel_index(idx, grad_values[layer].shape))
