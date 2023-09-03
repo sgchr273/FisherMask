@@ -125,7 +125,10 @@ class fisher_mask_sampling(Strategy):
                 layer_avg = np.average(grad_values[i])
                 sorted_grads = np.argsort(grad_values[layer],axis=None)
                 flat_layer = np.array(grad_values[layer]).flatten()
-                top_grad_idxs = [i for i in sorted_grads if flat_layer[i] > layer_avg*1.25]
+                top_grad_idxs = [i for i in sorted_grads if flat_layer[i] > layer_avg*2]
+                layer_limit = np.ceil(len(flat_layer)*0.025)
+                if len(top_grad_idxs) > layer_limit:
+                    top_grad_idxs = top_grad_idxs[-int(layer_limit):]
                 for idx in top_grad_idxs:
                     try:
                         imp_wt_idxs[layer].append(np.unravel_index(idx, grad_values[layer].shape))
@@ -223,6 +226,7 @@ class fisher_mask_sampling(Strategy):
         save_imp_weights(imp_wt_idxs, self.savefile)
         xt = self.log_prob_grads_wrt(imp_wt_idxs)
         torch.cuda.empty_cache()
+        gc.collect()
 
         batchSize = 25
         # get fisher
