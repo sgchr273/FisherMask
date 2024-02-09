@@ -12,51 +12,52 @@ import time
 
 from saving import load_model, save_queried_idx
 from experiments import exper, opts
-if __name__=="__main__":
+# if __name__=="__main__":
 
-    DATA_NAME = opts.data
-    SAVE_FILE = opts.savefile
-    NUM_QUERY = opts.nQuery
+DATA_NAME = opts.data
+SAVE_FILE = opts.savefile
+NUM_QUERY = opts.nQuery
 
-    # non-openml data defaults
-    args_pool = {'MNIST':
-                    {'n_epoch': 10, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
-                    'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
-                    'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
-                    'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
-                'FashionMNIST':
-                    {'n_epoch': 10, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
-                    'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
-                    'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
-                    'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
-                'SVHN':
-                    {'n_epoch': 20, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4377, 0.4438, 0.4728), (0.1980, 0.2010, 0.1970))]),
-                    'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
-                    'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
-                    'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
-                'CIFAR10':
-                    {'n_epoch': 3, 'transform': transforms.Compose([ 
-                        transforms.RandomCrop(32, padding=4),
-                        transforms.RandomHorizontalFlip(),
-                        transforms.ToTensor(),
-                        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
-                    ]),
-                    'loader_tr_args':{'batch_size': 128, 'num_workers': 1},
-                    'loader_te_args':{'batch_size': 100, 'num_workers': 1}, # change back to 1000
-                    'optimizer_args':{'lr': 0.05, 'momentum': 0.3},
-                    'transformTest': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])}
-                    }
-    args = args_pool[DATA_NAME]
-    args['lr'] = opts.lr
-    args['modelType'] = opts.model
-    args['fishIdentity'] = opts.fishIdentity
-    args['fishInit'] = opts.fishInit
-    args['lamb'] = opts.lamb
-    args['backwardSteps'] = opts.backwardSteps
-    args['pct_top'] = opts.pct_top
-    args['chunkSize'] = opts.chunkSize
+# non-openml data defaults
+args_pool = {'MNIST':
+                {'n_epoch': 10, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
+                'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
+                'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
+                'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
+            'FashionMNIST':
+                {'n_epoch': 10, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
+                'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
+                'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
+                'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
+            'SVHN':
+                {'n_epoch': 20, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4377, 0.4438, 0.4728), (0.1980, 0.2010, 0.1970))]),
+                'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
+                'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
+                'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
+            'CIFAR10':
+                {'n_epoch': 3, 'transform': transforms.Compose([ 
+                    transforms.RandomCrop(32, padding=4),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))
+                ]),
+                'loader_tr_args':{'batch_size': 500, 'num_workers': 1},  #large batchsize does not necessarily reduce the time of computation. It is kind of trade off that I should know.
+                'loader_te_args':{'batch_size': 200, 'num_workers': 1}, # change back to 1000
+                'optimizer_args':{'lr': 0.001, 'momentum': 0.3},
+                'transformTest': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])}
+                }
+DATA_NAME = 'CIFAR10'
+args = args_pool[DATA_NAME]
+args['lr'] = opts.lr
+args['modelType'] = opts.model
+args['fishIdentity'] = opts.fishIdentity
+args['fishInit'] = opts.fishInit
+args['lamb'] = opts.lamb
+args['backwardSteps'] = opts.backwardSteps
+args['pct_top'] = opts.pct_top
+args['chunkSize'] = opts.chunkSize
 
-    args['savefile'] = SAVE_FILE
+args['savefile'] = SAVE_FILE
 
 
     # _, __, X_te, Y_te = get_dataset(DATA_NAME, opts.path)
@@ -126,48 +127,67 @@ if __name__=="__main__":
     n_pool = len(Y_tr)
     NUM_INIT_LB = opts.nStart
 
-    net = resnet.ResNet18(num_classes=4)
-    """ for i in range(5):
-        opts.savefile = SAVE_FILE + str(i)
-        net = resnet.ResNet18(num_classes=4)
-        load_model(1, net, opts.savefile, 'entropy')
-        idxs_lb = np.zeros(n_pool, dtype=bool)
-        idxs_tmp = np.arange(n_pool)
-        np.random.shuffle(idxs_tmp)
-        idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
-        init_labeled = np.copy(idxs_lb)
-        with open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + '.p', "wb") as savefile:
-            pickle.dump(init_labeled, savefile)
-        exper('entropy', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
- """
-    """ net = resnet.ResNet18(num_classes=4)
-    for i in range(5):
-        opts.savefile = SAVE_FILE + str(i)
-        load_model(1, net, opts.savefile, 'entropy')
-        idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        exper('BAIT', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME) """
+    # net = resnet.ResNet18(num_classes=4)
+    # for i in range(5):
+    #     opts.savefile = SAVE_FILE + str(i)
+    #     net = resnet.ResNet18(num_classes=4)
+    #     load_model(1, net, opts.savefile, 'entropy')
+    #     idxs_lb = np.zeros(n_pool, dtype=bool)
+    #     idxs_tmp = np.arange(n_pool)
+    #     np.random.shuffle(idxs_tmp)
+    #     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
+    #     init_labeled = np.copy(idxs_lb)
+    #     with open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + '.p', "wb") as savefile:
+    #         pickle.dump(init_labeled, savefile)
+    #     exper('entropy', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)
+ 
+    # net = resnet.ResNet18(num_classes=4)
+    # for i in range(1):
+    #     opts.savefile = SAVE_FILE + str(i+4)
+    #     load_model(1, net, opts.savefile, 'entropy')
+    #     idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
+    #     exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME) 
 
-    """ net = resnet.ResNet18(num_classes=4)
-    for i in range(5):
-        opts.savefile = SAVE_FILE + str(i)
-        load_model(1, net, opts.savefile, 'entropy')
-        idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        opts.savefile = SAVE_FILE + str(i) + "_standard"
-        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="standard")
+    # net = resnet.ResNet18(num_classes=4)
+    # for i in range(5):
+    #     opts.savefile = SAVE_FILE + str(i)
+    #     load_model(1, net, opts.savefile, 'entropy')
+    #     idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
+    #     exper('rand', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME) 
 
-    net = resnet.ResNet18(num_classes=4)
+    idxs_lb = np.zeros(n_pool, dtype=bool)
+    idxs_tmp = np.arange(n_pool)
+    np.random.shuffle(idxs_tmp)
+    idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
+    # net = resnet.ResNet18(num_classes=4)
+    # for i in range(5):
+    #     opts.savefile = SAVE_FILE + str(i)
+    #     load_model(1, net, opts.savefile, 'entropy')
+    #     idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
+    #     opts.savefile = SAVE_FILE + str(i) 
+    #     exper('BAIT', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)  #, method="standard"
+    net = resnet.ResNet18(num_classes=4) 
     for i in range(5):
-        opts.savefile = SAVE_FILE + str(i)
-        load_model(1, net, opts.savefile, 'entropy')
-        idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        opts.savefile = SAVE_FILE + str(i) + "_dispersed"
-        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="dispersed") """
+        net = resnet.ResNet18(num_classes=4) 
+        # load_model(1, net, opts.savefile, 'entropy')
+        # idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + str(i) +".p", "rb"))
+        opts.savefile = SAVE_FILE+  str(i)
+        exper('kcent', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME)  #, method="standard"
 
-    net = resnet.ResNet18(num_classes=4)
-    for i in range(5):
-        opts.savefile = SAVE_FILE + str(i)
-        load_model(1, net, opts.savefile, 'entropy')
-        idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
-        opts.savefile = SAVE_FILE + str(i) + "_relative"
-        exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="relative")
+
+    # net = resnet.ResNet18(num_classes=4)
+    # for i in range(5):
+    #     opts.savefile = SAVE_FILE + str(i)
+    #     load_model(1, net, opts.savefile, 'entropy')
+    #     idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
+    #     opts.savefile = SAVE_FILE + str(i) + "_dispersed"
+    #     exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="dispersed") 
+
+    # net = resnet.ResNet18(num_classes=4)
+    # for i in range(5):
+    #     opts.savefile = SAVE_FILE + str(i)
+    #     load_model(1, net, opts.savefile, 'entropy')
+    #     idxs_lb = pickle.load(open("./Save/Queried_idxs/InitLabeled_" + opts.savefile + ".p", "rb"))
+    #     opts.savefile = SAVE_FILE + str(i) + "_relative"
+    #     exper('FISH', X_tr, Y_tr, idxs_lb, net, handler, args, X_te, Y_te, DATA_NAME, method="relative")
     

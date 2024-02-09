@@ -11,7 +11,7 @@ Command to retain output:
 https://unix.stackexchange.com/a/680833
 
 An experiment can be executed with a command like:
-    python experiments.py --model resnet --data CIFAR10 --nStart 1000 --nQuery 1200 --nEnd 25000 --DEBUG 25000 --backwardSteps 0 --aug 1 --savefile <insertname>
+    nohup python -u experiments.py --model resnet --data CIFAR10 --nStart 1000 --nQuery 1200 --nEnd 25000 --DEBUG 25000 --backwardSteps 0 --aug 1 --savefile <insertname>  > program.out 2>&1  &
 
 or for small test-case purposes:
     python experiments.py --model resnet --data CIFAR10 --nStart 10 --nQuery 120 --nEnd 250 --DEBUG 250 --backwardSteps 0 --aug 1 --savefile <insertname>

@@ -60,6 +60,7 @@ def get_CIFAR10(path):
     data_tr = datasets.CIFAR10(path + '/CIFAR10', train=True, download=True)
     data_te = datasets.CIFAR10(path + '/CIFAR10', train=False, download=True)
     X_tr = data_tr.data
+    # X_tr = torch.from_numpy(X_tr).permute(0,3,2,1)
     Y_tr = torch.from_numpy(np.array(data_tr.targets))
     X_te = data_te.data
     Y_te = torch.from_numpy(np.array(data_te.targets))

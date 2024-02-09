@@ -13,11 +13,13 @@ import resnet
 # from torchvision.models import resnet18, ResNet18_Weights
 from torch.distributions.categorical import Categorical
 class Strategy:
-    def __init__(self, X, Y, idxs_lb, net, handler, args):
+    def __init__(self, X, Y, idxs_lb, net, handler, args):   # resnet_duq_model after net
+    # def __init__(self, X, Y, idxs_lb, net, handler, args):
         self.X = X
         self.Y = Y
         self.idxs_lb = idxs_lb
         self.net = net
+        # self.resnet_duq_model = resnet_duq_model
         self.handler = handler
         self.args = args
         self.n_pool = len(Y)
@@ -36,6 +38,7 @@ class Strategy:
             x, y = Variable(x.cuda()), Variable(y.cuda())
             optimizer.zero_grad()
             out, e1 = self.clf(x)
+            # out = self.clf(x)
             loss = F.cross_entropy(out, y) #, weight = torch.tensor([3,1.5]).cuda()
             # accFinal += torch.sum((torch.max(out,1)[1] == y).float()).data.item()
             accFinal += torch.sum((torch.max(out,1)[1] == y)).float().data.item()
@@ -246,11 +249,15 @@ class Strategy:
             loader_te = DataLoader(self.handler(X.numpy(), Y, transform=self.args['transformTest']),
                             shuffle=False, **self.args['loader_te_args'])
 
+        # self.net.eval()     #change to self.clf.eval()
+        # net = self.net.cuda()
         self.clf.eval()
         P = torch.zeros(len(Y)).long()
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = Variable(x.cuda()), Variable(y.cuda())
+                # out, e1 = self.net(x)    #change to self.clf.eval()
+                # out = self.net(x)
                 out, e1 = self.clf(x)
                 pred = out.max(1)[1]
                 P[idxs] = pred.data.cpu()
@@ -260,13 +267,14 @@ class Strategy:
         '''
         Y not being used meaningfully
         '''
-        if type(model) == list: model = self.clf
+        if type(model) == list: model = self.net
 
         loader_te = DataLoader(self.handler(X, Y, transform=self.args['transformTest']), shuffle=False, **self.args['loader_te_args'])
-        model = model.eval()
+        model = model.eval().cuda()
         probs = torch.zeros([len(Y), len(np.unique(self.Y))])
         with torch.no_grad():
             for x, y, idxs in loader_te:
+                # print(idxs)
                 x, y = Variable(x.cuda()), Variable(y.cuda())
                 out, e1 = model(x)
                 if exp: out = F.softmax(out, dim=1)

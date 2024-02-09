@@ -15,11 +15,12 @@ import logging
 import random
 from .bait_sampling import select
 from saving import save_imp_weights, save_queried_idx
+from torch.nn.parallel import DataParallel
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class fisher_mask_sampling(Strategy):
-    def __init__(self, X, Y, idxs_lb, net, handler, args, method):
+    def __init__(self, X, Y, idxs_lb, net, handler, args):   #method is last argument
         super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
         self.alg = "FISH"
         self.fishIdentity = args['fishIdentity']
@@ -29,18 +30,19 @@ class fisher_mask_sampling(Strategy):
         self.pct_top = args['pct_top']
         self.savefile = args["savefile"]
         self.chunkSize = args["chunkSize"]
-        self.method = method
-        self.rand_mask = self.calculate_random_mask(1280)
+        # self.method = method
+        # self.rand_mask = self.calculate_random_mask(1280)
 
     def calculate_fishmask(self, pct_top=0.02, method="standard"):
         #---------------------------------Originally calculate_gradients---------------------------------
         self.net.to(device)
+        # self.net = DataParallel(self.net)
         for param in self.net.parameters():
             param.requires_grad = True
         self.net.eval()
         parameters = tuple(self.net.parameters())
         sq_grads_expect = {i: np.zeros(p.shape) for i, p in enumerate(parameters)}
-        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args'])
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_tr_args'])
         num_samples = 1024 # used by FISH mask paper
         idx = 0
         for test_batch, test_labels, idxs in test_loader:
@@ -189,12 +191,13 @@ class fisher_mask_sampling(Strategy):
             masks_list.append(mask)
         
         
-        self.net.to(device)
+        # self.net.to(device)
+        # self.net = DataParallel(self.net)
         for param in self.net.parameters():
             param.requires_grad = True
         self.net.eval()
         parameters = tuple(self.net.parameters())
-        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_te_args'])
+        test_loader = DataLoader(self.handler(self.X, self.Y, transform=self.args['transform']), shuffle=False, **self.args['loader_tr_args'])
         for test_batch, test_labels, idxs in test_loader:
             test_batch, test_labels = test_batch.cuda(), test_labels.cuda()
             
@@ -219,16 +222,18 @@ class fisher_mask_sampling(Strategy):
     def query(self, n):
         self.fishIdentity == 0
         #imp_wt_idxs = self.calculate_fishmask(self.pct_top)
-        if self.method != "random":
-            imp_wt_idxs = self.calculate_fishmask(self.pct_top, self.method)
-        else:
-            imp_wt_idxs = self.rand_mask
+        # if self.method != "random":
+        imp_wt_idxs = self.calculate_fishmask(self.pct_top, method ='standard') 
+        # else:
+        #     imp_wt_idxs = self.rand_mask
         save_imp_weights(imp_wt_idxs, self.savefile)
+        start = time.time()
         xt = self.log_prob_grads_wrt(imp_wt_idxs)
+        print('log_prob_grads took:', time.time()- start)
         torch.cuda.empty_cache()
         gc.collect()
 
-        batchSize = 25
+        batchSize = 17
         # get fisher
         if self.fishIdentity == 0:
             print('getting fisher matrix ...', flush=True)
@@ -271,8 +276,10 @@ class fisher_mask_sampling(Strategy):
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         
         xt = xt[idxs_unlabeled]
-        
+        xt = xt.double()
+        sel1 = time.time()
         chosen = select(xt, n, fisher, init, self.savefile, "FISH", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        print('Select took:', time.time()-sel1)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile, self.alg)
         print('selected probs: ' +
                 str(str(torch.mean(torch.max(phat[chosen, :], 1)[0]).item())) + ' ' +

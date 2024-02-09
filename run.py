@@ -272,7 +272,7 @@ if type(X_te) == torch.Tensor: X_te = X_te.numpy()
 
 # round 0 accuracy
 if __name__ == '__main__': # < -- remove this if to go back to original
-    strategy.train()
+    # strategy.train()
     P = strategy.predict(X_te, Y_te)
     acc = np.zeros(NUM_ROUND+1)
     acc[0] = 1.0 * (Y_te == P).sum().item() / len(Y_te)
@@ -295,7 +295,7 @@ if __name__ == '__main__': # < -- remove this if to go back to original
         strategy.update(idxs_lb)
         train_time = time.time()
         print('Update took:', train_time - update_time)
-        strategy.train(verbose=True)
+        strategy.train(verbose=False)
 
         # round accuracy
         predict_time = time.time()

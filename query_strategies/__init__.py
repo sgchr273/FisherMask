@@ -16,3 +16,9 @@ from .badge_sampling  import BadgeSampling
 from .baseline_sampling  import BaselineSampling
 from .bait_sampling  import BaitSampling
 from .fisher_mask_sampling import fisher_mask_sampling
+from .deter_unc_sampling import ResNetDUQEntropySampling
+
+#if it gives module not found error for some file, do this
+# git add path to File
+# git commit -m 'some text'
+# git push

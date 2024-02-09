@@ -46,4 +46,3 @@ class AdversarialBIM(Strategy):
 
 		return idxs_unlabeled[dis.argsort()[:n]]
 
-
