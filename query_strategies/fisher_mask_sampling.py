@@ -13,15 +13,15 @@ import pickle
 import os
 import logging
 import random
-from .bait_sampling import select
+from .bait_sampling import select, fresh_select
 from saving import save_imp_weights, save_queried_idx
 from torch.nn.parallel import DataParallel
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-class fisher_mask_sampling(Strategy):
+class FishMaskSampling(Strategy):
     def __init__(self, X, Y, idxs_lb, net, handler, args):   #method is last argument
-        super(fisher_mask_sampling, self).__init__(X, Y, idxs_lb, net, handler, args)
+        super(FishMaskSampling, self).__init__(X, Y, idxs_lb, net, handler, args)
         self.alg = "FISH"
         self.fishIdentity = args['fishIdentity']
         self.fishInit = args['fishInit']
@@ -275,10 +275,12 @@ class fisher_mask_sampling(Strategy):
                 str(str(torch.mean(torch.min(phat, 1)[0]).item())) + ' ' + 
                 str(str(torch.mean(torch.std(phat,1)).item())), flush=True)
         
-        xt = xt[idxs_unlabeled]
-        xt = xt.double()
+        # xt = xt[idxs_unlabeled]
+        # xt = xt.double()
         sel1 = time.time()
-        chosen = select(xt, n, fisher, init, self.savefile, "FISH", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        chosen = select(xt[idxs_unlabeled], n, fisher, init, self.savefile, "FISH", lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb), chunkSize=self.chunkSize)
+        # chosen = fresh_select(xt[idxs_unlabeled], n, fisher, init, lamb=self.lamb, backwardSteps=self.backwardSteps, nLabeled=np.sum(self.idxs_lb))
+
         print('Select took:', time.time()-sel1)
         save_queried_idx(idxs_unlabeled[chosen], self.savefile, self.alg)
         print('selected probs: ' +

@@ -60,7 +60,8 @@ class Strategy:
         n_epoch = self.args['n_epoch']
         if reset: self.clf =  self.net.apply(weight_reset).cuda()
         if type(net) != list: self.clf = net
-        if type(optimizer) == int: optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
+        # if type(optimizer) == int: optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)  #previously it was 0
+        if type(optimizer) == int: optimizer = optim.Adam(self.clf.parameters(),lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)   #previously it was 0
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
         # preprocess = ResNet18_Weights.DEFAULT.transforms()
@@ -83,7 +84,11 @@ class Strategy:
             # reset if not converging
             if (epoch % 1000 == 0) and (accCurrent < 0.2) and (self.args['modelType'] != 'linear'):
                 self.clf = self.net.apply(weight_reset).cuda() 
-                optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
+                # optimizer = optim.Adam(self.clf.parameters(), lr = self.args['lr'], weight_decay=0)
+                if type(optimizer) == int: optimizer = optim.Adam(self.clf.parameters(),lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)   #previously it was 0
+
+                # if type(optimizer) == int: optimizer = optim.SGD(self.clf.parameters(), lr = 0.1, momentum = 0.9, weight_decay=0.0005)  #previously it was 0
+
             if attempts >= 50 and self.args['modelType'] == 'linear': break 
             #if attempts >= 50 and self.args['modelType'] != 'linear' and len(idxs_train) > 1000:
             #    self.clf = self.net.apply(weight_reset)
@@ -101,8 +106,8 @@ class Strategy:
         if verbose: print(' ',flush=True)
         if verbose: print('getting validation minimizing number of epochs', flush=True)
         self.clf =  self.net.apply(weight_reset).cuda()
-        if opt == 'adam': optimizer = optim.Adam(self.clf.parameters(), lr=self.args['lr'], weight_decay=0)
-        if opt == 'sgd': optimizer = optim.SGD(self.clf.parameters(), lr=self.args['lr'], weight_decay=0)
+        if opt == 'adam': optimizer = optim.Adam(self.clf.parameters(), lr=self.args['lr'], weight_decay=0.0005)
+        if opt == 'sgd': optimizer = optim.SGD(self.clf.parameters(), lr=self.args['lr'], weight_decay=0.0005)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
         nVal = int(len(idxs_train) * valFrac)

@@ -15,8 +15,9 @@ from .active_learning_by_learning import ActiveLearningByLearning
 from .badge_sampling  import BadgeSampling
 from .baseline_sampling  import BaselineSampling
 from .bait_sampling  import BaitSampling
-from .fisher_mask_sampling import fisher_mask_sampling
+from .fisher_mask_sampling import FishMaskSampling
 from .deter_unc_sampling import ResNetDUQEntropySampling
+from .fish_ent_sampling import FishEntSampling
 
 #if it gives module not found error for some file, do this
 # git add path to File

@@ -6,10 +6,10 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
-            "args": ["--model", "resnet", "--nQuery", "1200", "--data", "CIFAR10", "--nStart", "1000", "--nEnd", "25000", "--backwardSteps", "0", "--DEBUG", "25000", "--aug" ,"1", "--savefile", "experi", "--alg", "FISH", "--did", "0", "--pct_top", "0.01"],
+            "type": "debugpy",
+            // "args": ["--model", "resnet", "--nQuery", "1200", "--data", "CIFAR10", "--nStart", "1000", "--nEnd", "25000", "--backwardSteps", "0", "--DEBUG", "25000", "--aug" ,"1", "--savefile", "experi", "--alg", "FISH", "--did", "0", "--pct_top", "0.01"],
             "request": "launch",
-            "program": "${file}",
+            "program": "/usr/local/home/sgchr/Documents/active_nn/baselines_compare.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

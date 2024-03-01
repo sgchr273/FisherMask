@@ -20,7 +20,7 @@ def save_accuracies(new_acc, filename, alg):
         acc_dict = pickle.load(savefile)
         savefile.close()
     except:
-        acc_dict = {"entropy": [], "kcent": [], "FISH":[],"BAIT":[], "rand" : [], "DUQ":[], "kmeans":[]}
+        acc_dict = {"entropy": [], "kcent": [], "FISH":[],"BAIT":[], "rand" : [], "DUQ":[], "margin":[], "lcs":[], "FishEnt":[]}
     finally:
         if not os.path.exists("./Save/Round_accuracies"):
             os.makedirs("./Save/Round_accuracies")

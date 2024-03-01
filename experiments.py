@@ -19,7 +19,7 @@ from saving import save_accuracies, save_model, load_model
 from DUQ_model import model_DUQ
 
 
-from query_strategies import RandomSampling, BadgeSampling, \
+from query_strategies import RandomSampling, BadgeSampling, FishEntSampling, \
                                  LeastConfidence, MarginSampling, \
                                 EntropySampling, CoreSet, ActiveLearningByLearning, \
                                 LeastConfidenceDropout, MarginSamplingDropout, EntropySamplingDropout, \
@@ -29,14 +29,14 @@ from query_strategies import RandomSampling, BadgeSampling, \
 parser = argparse.ArgumentParser()
 parser.add_argument('--alg', help='acquisition algorithm', type=str, default='rand')
 parser.add_argument('--did', help='openML dataset index, if any', type=int, default=0)
-parser.add_argument('--lr', help='learning rate', type=float, default=1e-4)
+parser.add_argument('--lr', help='learning rate', type=float, default=0.001)  #1e-4
 parser.add_argument('--paramScale', help='learning rate', type=float, default=1)
 parser.add_argument('--model', help='model - resnet, vgg, or mlp', type=str, default='mlp')
 parser.add_argument('--path', help='data path', type=str, default='data')
 parser.add_argument('--data', help='dataset (non-openML)', type=str, default='CIFAR10')
-parser.add_argument('--nQuery', help='number of points to query in a batch', type=int, default=70)
-parser.add_argument('--nStart', help='number of points to start', type=int, default=15)
-parser.add_argument('--nEnd', help = 'total number of points to query', type=int, default=575)
+parser.add_argument('--nQuery', help='number of points to query in a batch', type=int, default=250) #70, #2000
+parser.add_argument('--nStart', help='number of points to start', type=int, default=250) #15, #2000
+parser.add_argument('--nEnd', help = 'total number of points to query', type=int, default=5750) #925, 26000
 parser.add_argument('--nEmb', help='number of embedding dims (mlp)', type=int, default=128)
 parser.add_argument('--rounds', help='number of embedding dims (mlp)', type=int, default=0)
 parser.add_argument('--trunc', help='number of embedding dims (mlp)', type=int, default=-1)
@@ -48,8 +48,8 @@ parser.add_argument('--fishIdentity', help='for ablation, setting fisher to be i
 parser.add_argument('--fishInit', help='initialize selection with fisher on seen data', type=int, default=1)
 parser.add_argument('--backwardSteps', help='openML dataset index, if any', type=int, default=0)
 parser.add_argument('--dummy', help='dummy input for indexing replicates', type=int, default=1)
-parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.01)
-parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=575)
+parser.add_argument('--pct_top', help='percentage of important weights to use for Fisher', type=float, default=0.002)
+parser.add_argument('--DEBUG', help='provide a size to utilize decreased dataset size for quick run', type=int, default=5750) #925 26000
 parser.add_argument('--savefile', help='name of file to save round accuracies to', type=str, default="experiment0")
 parser.add_argument('--chunkSize', help='for computation inside select function', type=int, default=200)
 # parser.add_argument('--compare', help='previous run to compare to', type=str, required=True, default='random_mask_exp_25K')
@@ -73,8 +73,8 @@ def decrease_dataset(X_tr, Y_tr):
         var = np.random.choice(np.arange(len(X_tr), dtype=int)[i == 1], int(new_size/10), replace=False)
         new_Xtr.append(X_tr[var])
 
-    # new_Xtr = np.array(new_Xtr).reshape(new_size, 32, 32, 3)
-    new_Xtr = np.array(new_Xtr).reshape(new_size, 3, 32, 32)
+    new_Xtr = np.array(new_Xtr).reshape(new_size, 32, 32, 3)
+    # new_Xtr = np.array(new_Xtr).reshape(new_size, 3, 32, 32)
 
     # creating new_Ytr
     new_Ytr = np.zeros(new_size, dtype = 'int')
@@ -101,8 +101,12 @@ def exper(alg, X_tr, Y_tr, idxs_lb, net, handler, args,X_te, Y_te, DATA_NAME):  
         strategy = EntropySampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     elif alg == 'kcent': # kcentergreedy-based sampling
         strategy = KCenterGreedy(X_tr, Y_tr, idxs_lb, net, handler, args)
-    elif alg == 'kmeans': # kcentergreedy-based sampling
-        strategy = KMeansSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'margin': # kcentergreedy-based sampling
+        strategy = MarginSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'lcs': # kcentergreedy-based sampling
+        strategy = LeastConfidence(X_tr, Y_tr, idxs_lb, net, handler, args)
+    elif alg == 'FishEnt': # kcentergreedy-based sampling
+        strategy = FishEntSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
     # elif alg == 'DUQ':
         # strategy = ResNetDUQEntropySampling(X_tr, Y_tr, idxs_lb, net, model_DUQ, handler, args)
     else: 
@@ -171,12 +175,12 @@ def main():
                     {'n_epoch': 10, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
                     'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
                     'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
-                    'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
+                    'optimizer_args':{'lr': 0.001, 'momentum': 0.5}},
                 'SVHN':
                     {'n_epoch': 20, 'transform': transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.4377, 0.4438, 0.4728), (0.1980, 0.2010, 0.1970))]),
                     'loader_tr_args':{'batch_size': 64, 'num_workers': 1},
                     'loader_te_args':{'batch_size': 1000, 'num_workers': 1},
-                    'optimizer_args':{'lr': 0.01, 'momentum': 0.5}},
+                    'optimizer_args':{'lr': 0.001, 'momentum': 0.3}},
                 'CIFAR10':
                     {'n_epoch': 3, 'transform': transforms.Compose([ 
                         transforms.RandomCrop(32, padding=4),

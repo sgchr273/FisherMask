@@ -120,7 +120,8 @@ class DataHandler3(Dataset):
     def __getitem__(self, index):
         x, y = self.X[index], self.Y[index]
         if self.transform is not None:
-            x = Image.fromarray(x)
+            # x = Image.fromarray(x)
+            x = Image.fromarray((x * 255).astype(np.uint8))
             x = self.transform(x)
         return x, y, index
 
