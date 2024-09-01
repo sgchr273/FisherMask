@@ -12,6 +12,8 @@
 *.pk
 *.out
 FISH/
+DUQ_model.py
+try_duq.ipynb
 data*
 __pycache__/*
 */__pycache__/*
