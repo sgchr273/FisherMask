@@ -8,8 +8,12 @@
 *.pyc
 *.vscode
 *.sub
+*.pt
+*.pk
+*.out
 FISH/
 data*
 __pycache__/*
 */__pycache__/*
-Save*
+Save*oml/data_155.pk
+freshBAIT/lidc/Train.pt
